@@ -1,0 +1,95 @@
+{
+  "kiosk": {
+    "welcomeMain": "Welcome to Architectural Banking",
+    "welcomeSub": "Banking transaction queuing system",
+    "touchToStart": "Touch to Start",
+    "touchToStartSub": "Tap anywhere on the screen to continue",
+    "secureAccess": "Secure Biometric & Card Access",
+    "home": "Home",
+    "helpSupport": "Help & Support",
+    "cancelTicket": "Cancel Ticket",
+    "announcement": "Welcome. We kindly ask you to follow the steps when taking a ticket and wait until your number is called. Thank you.",
+    "selectService": {
+      "title": "Get a Queuing Ticket",
+      "subtitle": "Please select your current customer profile to get the appropriate ticket",
+      "regular": {
+        "title": "Personal Banking",
+        "desc": "For individual customers performing standard daily banking transactions.",
+        "action": "Get Ticket"
+      },
+      "priority": {
+        "title": "Priority Banking",
+        "desc": "For existing VIP/Priority members. Requires card swipe or authentication to issue a ticket.",
+        "action": "Priority Ticket"
+      },
+      "corporate": {
+        "title": "Corporate Banking",
+        "desc": "For business representatives and organizations performing corporate transactions.",
+        "action": "Corporate Ticket"
+      }
+    },
+    "accountModal": {
+      "title": "Do you have an account at Architectural Banking yet?",
+      "subtitle": "Please select your current status so we can assist you better.",
+      "hasAccount": "I have an account",
+      "noAccount": "I don't have an account",
+      "note": "Providing your phone number helps us identify and serve you best during the transaction.",
+      "back": "Go back"
+    },
+    "phoneInput": {
+      "title": "Please enter your phone number",
+      "subtitle": "So we can identify and serve you best.",
+      "clear": "Clear",
+      "continue": "Continue",
+      "back": "Go back"
+    },
+    "confirmModal": {
+      "title": "Confirm Service",
+      "subtitle": "You are requesting a ticket for",
+      "confirm": "Confirm & Print Ticket",
+      "cancel": "Reselect"
+    },
+    "printing": {
+      "title": "Printing ticket...",
+      "subtitle": "Please wait a moment",
+      "successTitle": "Ticket printed successfully",
+      "successSubtitle": "Please take your ticket and wait for your turn. Thank you.",
+      "yourNumber": "YOUR NUMBER",
+      "service": "SERVICE",
+      "thanks": "Thank you for using our service!",
+      "note": "Note:",
+      "noteContent": "Please keep the ticket and wait until the system calls your ticket number"
+    },
+    "chooseService": {
+      "title": "Select Transaction Service",
+      "subtitle": "Please select your desired service to print a queue ticket",
+      "back": "Go back",
+      "services": {
+        "deposit": {
+          "title": "Deposit/Withdraw",
+          "desc": "Quick cash transactions at counters and ATMs"
+        },
+        "card": {
+          "title": "Open Account/Card",
+          "desc": "Register for payment accounts and credit cards"
+        },
+        "bill": {
+          "title": "Bill Payment",
+          "desc": "Electricity, water, internet, and public services"
+        },
+        "ebanking": {
+          "title": "E-Banking Services",
+          "desc": "Support installing Apps, Tokens, and Online Access"
+        },
+        "loan": {
+          "title": "Loans",
+          "desc": "Consumer loans, mortgages, and business loans"
+        },
+        "advisory": {
+          "title": "Financial Advisory",
+          "desc": "Investment planning, insurance, and asset management"
+        }
+      }
+    }
+  }
+}

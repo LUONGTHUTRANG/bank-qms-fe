@@ -1,0 +1,95 @@
+{
+  "kiosk": {
+    "welcomeMain": "Chào mừng đến với Architectural Banking",
+    "welcomeSub": "Hệ thống cấp phiếu chờ giao dịch ngân hàng",
+    "touchToStart": "Chạm để bắt đầu",
+    "touchToStartSub": "Chạm vào bất kỳ đâu trên màn hình để tiếp tục",
+    "secureAccess": "Bảo mật sinh trắc học & Thẻ",
+    "home": "Trang chủ",
+    "helpSupport": "Trợ giúp & Hỗ trợ",
+    "cancelTicket": "Hủy lấy phiếu",
+    "announcement": "Kính chào quý khách. Kính mong quý khách hàng tuân thủ các bước khi lấy phiếu và chờ đến lượt phiếu của mình được gọi. Trân trọng cảm ơn.",
+    "selectService": {
+      "title": "Lấy phiếu chờ giao dịch",
+      "subtitle": "Vui lòng chọn đúng phân loại khách hàng của Quý khách",
+      "regular": {
+        "title": "Khách hàng Cá nhân",
+        "desc": "Dành cho khách hàng cá nhân đến thực hiện các giao dịch thông thường.",
+        "action": "Lấy phiếu"
+      },
+      "priority": {
+        "title": "Khách hàng Ưu tiên",
+        "desc": "Dành cho khách hàng VIP/hội viên ưu tiên của ngân hàng. Yêu cầu quẹt thẻ hoặc xác thực để nhận phiếu.",
+        "action": "Phiếu Ưu tiên"
+      },
+      "corporate": {
+        "title": "Khách hàng Doanh nghiệp",
+        "desc": "Dành cho đại diện doanh nghiệp, tổ chức đến thực hiện các giao dịch tài chính.",
+        "action": "Phiếu Doanh nghiệp"
+      }
+    },
+    "accountModal": {
+      "title": "Quý khách đã có tài khoản tại Architectural Banking chưa?",
+      "subtitle": "Vui lòng chọn trạng thái hiện tại của bạn để chúng tôi hỗ trợ tốt nhất.",
+      "hasAccount": "Đã có tài khoản",
+      "noAccount": "Chưa có tài khoản",
+      "note": "Cung cấp số điện thoại giúp chúng tôi nhận diện và phục vụ bạn tốt nhất trong suốt quá trình giao dịch.",
+      "back": "Quay lại"
+    },
+    "phoneInput": {
+      "title": "Vui lòng nhập số điện thoại",
+      "subtitle": "Để chúng tôi có thể định danh và phục vụ Quý khách tốt nhất.",
+      "clear": "Xóa",
+      "continue": "Tiếp tục",
+      "back": "Quay lại"
+    },
+    "confirmModal": {
+      "title": "Xác nhận dịch vụ",
+      "subtitle": "Bạn đang yêu cầu cấp phiếu cho giao dịch",
+      "confirm": "Xác nhận lấy phiếu",
+      "cancel": "Chọn lại"
+    },
+    "printing": {
+      "title": "Đang in phiếu...",
+      "subtitle": "Vui lòng đợi trong giây lát",
+      "successTitle": "Đã in phiếu thành công",
+      "successSubtitle": "Quý khách vui lòng nhận phiếu và chờ đến lượt. Xin trân trọng cảm ơn.",
+      "yourNumber": "SỐ CỦA BẠN",
+      "service": "DỊCH VỤ",
+      "thanks": "Cảm ơn quý khách!",
+      "note": "Lưu ý:",
+      "noteContent": "Quý khách vui lòng giữ lại phiếu và chờ đến khi hệ thống gọi đến mã số phiếu của mình"
+    },
+    "chooseService": {
+      "title": "Lựa chọn dịch vụ giao dịch",
+      "subtitle": "Vui lòng chọn loại giao dịch hiện tại để nhận phiếu chờ tương ứng",
+      "back": "Quay lại",
+      "services": {
+        "deposit": {
+          "title": "Nộp/Rút tiền",
+          "desc": "Giao dịch tiền mặt nhanh chóng tại quầy và máy ATM"
+        },
+        "card": {
+          "title": "Mở tài khoản/Thẻ",
+          "desc": "Đăng ký tài khoản thanh toán và các loại thẻ tín dụng"
+        },
+        "bill": {
+          "title": "Thanh toán hóa đơn",
+          "desc": "Điện, nước, internet và các dịch vụ công cộng"
+        },
+        "ebanking": {
+          "title": "Dịch vụ ngân hàng điện tử",
+          "desc": "Hỗ trợ cài đặt App, Token và truy cập Online"
+        },
+        "loan": {
+          "title": "Vay vốn",
+          "desc": "Vay tiêu dùng, mua nhà và sản xuất kinh doanh"
+        },
+        "advisory": {
+          "title": "Tư vấn tài chính",
+          "desc": "Kế hoạch đầu tư, bảo hiểm và quản lý tài sản"
+        }
+      }
+    }
+  }
+}
