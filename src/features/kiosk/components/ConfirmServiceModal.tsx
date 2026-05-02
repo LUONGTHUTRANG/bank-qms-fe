@@ -14,9 +14,10 @@ interface ConfirmServiceModalProps {
   service: ServiceData | null;
   onClose: () => void;
   onConfirm: () => void;
+  isLoading?: boolean;
 }
 
-export default function ConfirmServiceModal({ isOpen, service, onClose, onConfirm }: ConfirmServiceModalProps) {
+export default function ConfirmServiceModal({ isOpen, service, onClose, onConfirm, isLoading }: ConfirmServiceModalProps) {
   const { t } = useTranslation();
   const [isClickable, setIsClickable] = useState(false);
 
@@ -42,7 +43,7 @@ export default function ConfirmServiceModal({ isOpen, service, onClose, onConfir
           transition={{ duration: 0.3 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-[#001e2d]/60 backdrop-blur-md p-4 sm:p-8 select-none touch-manipulation"
           onClick={(e) => {
-            if (!isClickable) return;
+            if (!isClickable || isLoading) return;
             e.stopPropagation();
             onClose();
           }}
@@ -92,13 +93,14 @@ export default function ConfirmServiceModal({ isOpen, service, onClose, onConfir
                   {/* Cancel/Reselect Button */}
                   <button 
                     type="button"
+                    disabled={!isClickable || isLoading}
                     onClick={(e) => {
-                      if (!isClickable) return;
+                      if (!isClickable || isLoading) return;
                       e.preventDefault();
                       e.stopPropagation();
                       onClose();
                     }}
-                    className={`bg-slate-100 cursor-pointer text-slate-700 font-bold px-6 md:px-8 py-4 rounded-[1.5rem] flex items-center justify-center gap-3 transition-all hover:bg-slate-200 active:scale-95 w-full sm:flex-1 text-lg ${!isClickable ? 'opacity-80 cursor-wait' : ''}`}
+                    className={`bg-slate-100 cursor-pointer text-slate-700 font-bold px-6 md:px-8 py-4 rounded-[1.5rem] flex items-center justify-center gap-3 transition-all hover:bg-slate-200 active:scale-95 w-full sm:flex-1 text-lg ${!isClickable || isLoading ? 'opacity-80 cursor-wait' : ''}`}
                   >
                     <span className="material-symbols-outlined text-2xl">refresh</span>
                     <span>{t('kiosk.confirmModal.cancel')}</span>
@@ -107,16 +109,18 @@ export default function ConfirmServiceModal({ isOpen, service, onClose, onConfir
                   {/* Confirm Button */}
                   <button 
                     type="button"
+                    disabled={!isClickable || isLoading}
                     onClick={(e) => {
-                      if (!isClickable) return;
+                      if (!isClickable || isLoading) return;
                       e.preventDefault();
                       e.stopPropagation();
                       onConfirm();
                     }}
-                    className={`bg-gradient-to-br cursor-pointer from-[#003063] to-[#00468c] text-white font-bold px-6 md:px-8 py-4 rounded-[1.5rem] flex items-center justify-center gap-3 transition-all hover:shadow-[0_20px_40px_rgba(0,48,99,0.2)] active:scale-95 w-full sm:flex-1 text-lg shadow-xl shadow-primary/20 ${!isClickable ? 'opacity-80 cursor-wait grayscale-[20%]' : ''}`}
+                    className={`bg-gradient-to-br cursor-pointer from-[#003063] to-[#00468c] text-white font-bold px-6 md:px-8 py-4 rounded-[1.5rem] flex items-center justify-center gap-3 transition-all hover:shadow-[0_20px_40px_rgba(0,48,99,0.2)] active:scale-95 w-full sm:flex-1 text-lg shadow-xl shadow-primary/20 ${!isClickable || isLoading ? 'opacity-80 cursor-wait grayscale-[20%]' : ''}`}
                   >
-                    <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
-                    <span>{t('kiosk.confirmModal.confirm')}</span>
+                    <span className="material-symbols-outlined text-2xl animate-spin" style={{ display: isLoading ? 'block' : 'none' }}>progress_activity</span>
+                    <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1", display: isLoading ? 'none' : 'block' }}>check_circle</span>
+                    <span>{isLoading ? 'Đang tạo phiếu...' : t('kiosk.confirmModal.confirm')}</span>
                   </button>
 
                 </div>

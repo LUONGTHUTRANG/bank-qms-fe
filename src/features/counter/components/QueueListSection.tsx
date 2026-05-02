@@ -1,15 +1,24 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useQueueStore } from '@/stores/useQueueStore';
 
 export default function QueueListSection() {
   const [activeTab, setActiveTab] = useState<'queue' | 'postponed' | 'cancelled'>('queue');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 8;
+  
+  const { queueTickets, isLoadingQueue } = useQueueStore();
 
-  // Hardcoded counts for current mock data
+  // Temporary calculate count mapping
   const counts = {
-    queue: 4,
+    queue: queueTickets.length,
     postponed: 0,
     cancelled: 0
   };
+
+  // Pagination logic
+  const totalPages = Math.ceil(queueTickets.length / itemsPerPage);
+  const paginatedQueue = queueTickets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <section className="space-y-4">
@@ -54,7 +63,7 @@ export default function QueueListSection() {
         </div>
         <div className="flex gap-2 shrink-0">
           <span className="px-3 py-1 bg-white rounded-full text-[11px] font-bold text-slate-500 border border-slate-200/60 shadow-sm whitespace-nowrap">
-            Cập nhật: 10:55:12
+            Cập nhật: --:--:--
           </span>
         </div>
       </div>
@@ -80,101 +89,55 @@ export default function QueueListSection() {
                   transition={{ duration: 0.2 }}
                   className="divide-y divide-slate-50"
                 >
-                  {/* Queue Item 1 */}
-                  <div className="grid grid-cols-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="text-base md:text-lg font-black text-[#003063]">A106</span>
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                  </div>
-                  <span className="text-[#191c20] font-semibold text-xs md:text-sm">Cá nhân</span>
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <span className="material-symbols-outlined text-[15px] md:text-[17px]">avg_time</span>
-                    <span className="font-medium text-[12px] md:text-[13px]">12 phút</span>
-                  </div>
-                  <div className="flex justify-end gap-1 md:gap-2">
-                    <button className="cursor-pointer p-1.5 md:p-2 text-[#003063] hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center" title="Gọi số">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">campaign</span>
-                    </button>
-                    <button className="cursor-pointer p-1.5 md:p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center" title="Tạm hoãn">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">more_time</span>
-                    </button>
-                    <button className="cursor-pointer p-1.5 md:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors flex items-center justify-center" title="Hủy bỏ">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">close</span>
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Queue Item 2 (Business) */}
-                <div className="grid grid-cols-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="text-base md:text-lg font-black text-[#003063]">B022</span>
-                    <span className="w-1.5 h-1.5 bg-purple-500 rounded-full"></span>
-                  </div>
-                  <span className="text-[#191c20] font-semibold text-xs md:text-sm">Doanh nghiệp</span>
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <span className="material-symbols-outlined text-[15px] md:text-[17px]">avg_time</span>
-                    <span className="font-medium text-[12px] md:text-[13px]">08 phút</span>
-                  </div>
-                  <div className="flex justify-end gap-1 md:gap-2">
-                    <button className="cursor-pointer p-1.5 md:p-2 text-[#003063] hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center" title="Gọi số">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">campaign</span>
-                    </button>
-                    <button className="cursor-pointer p-1.5 md:p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center" title="Tạm hoãn">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">more_time</span>
-                    </button>
-                    <button className="cursor-pointer p-1.5 md:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors flex items-center justify-center" title="Hủy bỏ">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">close</span>
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Queue Item 3 (Priority) */}
-                <div className="grid grid-cols-4 px-6 py-4 items-center transition-colors bg-amber-50/30 hover:bg-amber-50/60">
-                  <div className="flex items-center gap-4">
-                    <span className="text-base md:text-lg font-black text-[#003063]">S005</span>
-                    <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-[2px] rounded text-[8px] md:text-[9px] font-black uppercase tracking-wider">Ưu tiên</span>
-                  </div>
-                  <span className="text-[#191c20] font-semibold text-xs md:text-sm">VIP Services</span>
-                  <div className="flex items-center gap-2 text-red-600 font-bold">
-                    <span className="material-symbols-outlined text-[15px] md:text-[17px]">priority_high</span>
-                    <span className="text-[12px] md:text-[13px]">22 phút (Trễ)</span>
-                  </div>
-                  <div className="flex justify-end gap-1 md:gap-2">
-                    <button className="cursor-pointer p-1.5 md:p-2 text-amber-600 hover:bg-amber-100 rounded-full transition-colors flex items-center justify-center" title="Gọi số">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">campaign</span>
-                    </button>
-                    <button className="cursor-pointer p-1.5 md:p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center" title="Tạm hoãn">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">more_time</span>
-                    </button>
-                    <button className="cursor-pointer p-1.5 md:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors flex items-center justify-center" title="Hủy bỏ">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">close</span>
-                    </button>
-                  </div>
-                </div>
-                
-                {/* Queue Item 4 */}
-                <div className="grid grid-cols-4 px-6 py-4 items-center hover:bg-slate-50 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <span className="text-base md:text-lg font-black text-[#003063]">A107</span>
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                  </div>
-                  <span className="text-[#191c20] font-semibold text-xs md:text-sm">Cá nhân</span>
-                  <div className="flex items-center gap-2 text-slate-500">
-                    <span className="material-symbols-outlined text-[15px] md:text-[17px]">avg_time</span>
-                    <span className="font-medium text-[12px] md:text-[13px]">04 phút</span>
-                  </div>
-                  <div className="flex justify-end gap-1 md:gap-2">
-                    <button className="cursor-pointer p-1.5 md:p-2 text-[#003063] hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center" title="Gọi số">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">campaign</span>
-                    </button>
-                    <button className="cursor-pointer p-1.5 md:p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center" title="Tạm hoãn">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">more_time</span>
-                    </button>
-                    <button className="cursor-pointer p-1.5 md:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors flex items-center justify-center" title="Hủy bỏ">
-                      <span className="material-symbols-outlined text-[18px] md:text-[20px]">close</span>
-                    </button>
-                  </div>
-                </div>
+                  {isLoadingQueue ? (
+                    <div className="py-8 text-center text-slate-400 font-medium">
+                       Đang tải dữ liệu hàng đợi...
+                    </div>
+                  ) : queueTickets.length === 0 ? (
+                     <div className="py-8 text-center text-slate-400 font-medium">
+                       Chưa có khách chờ trong hàng đợi.
+                     </div>
+                  ) : (
+                    paginatedQueue.map((ticket, idx) => (
+                      <div key={ticket.ticketId || idx} className={`grid grid-cols-4 px-6 py-4 items-center transition-colors ${ticket.segmentCode === 'VIP' ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-slate-50'}`}>
+                        <div className="flex items-center gap-3">
+                          <span className="text-base md:text-lg font-black text-[#003063] uppercase">{ticket.ticketNo}</span>
+                          {ticket.segmentCode === 'VIP' ? (
+                            <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-[2px] rounded text-[8px] md:text-[9px] font-black uppercase tracking-wider">VIP</span>
+                          ) : (
+                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
+                          )}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-[#191c20] font-semibold text-xs md:text-sm">
+                            {ticket.requestGroupName || `Loại DS ${ticket.requestGroupId}`}
+                          </span>
+                          {ticket.segmentName && (
+                            <span className="text-slate-500 text-[10px] md:text-[11px] font-medium">
+                              {ticket.segmentName}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-slate-500">
+                          <span className="material-symbols-outlined text-[15px] md:text-[17px]">avg_time</span>
+                          <span className="font-medium text-[12px] md:text-[13px]">
+                             Vừa xong
+                          </span>
+                        </div>
+                        <div className="flex justify-end gap-1 md:gap-2">
+                          <button className="cursor-pointer p-1.5 md:p-2 text-[#003063] hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center" title="Gọi số">
+                            <span className="material-symbols-outlined text-[18px] md:text-[20px]">campaign</span>
+                          </button>
+                          <button className="cursor-pointer p-1.5 md:p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center" title="Tạm hoãn">
+                            <span className="material-symbols-outlined text-[18px] md:text-[20px]">more_time</span>
+                          </button>
+                          <button className="cursor-pointer p-1.5 md:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors flex items-center justify-center" title="Hủy bỏ">
+                            <span className="material-symbols-outlined text-[18px] md:text-[20px]">close</span>
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </motion.div>
               )}
 
@@ -208,6 +171,50 @@ export default function QueueListSection() {
             </AnimatePresence>
           </div>
         </div>
+
+        {/* Pagination Controls */}
+        {activeTab === 'queue' && totalPages > 1 && (
+          <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-sm">
+            <span className="text-slate-500">
+              Hiển thị <span className="font-semibold text-slate-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, queueTickets.length)}</span> trong tổng số <span className="font-semibold text-slate-700">{queueTickets.length}</span> vé
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Trang trước"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors ${
+                      currentPage === i + 1
+                        ? 'bg-[#003063] text-white'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Trang sau"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </section>
   );

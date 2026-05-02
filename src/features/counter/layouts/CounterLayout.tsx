@@ -1,18 +1,65 @@
 import CounterSidebar from '../components/CounterSidebar';
-import CounterHeader from '../components/CounterHeader';
+import CounterHeader, { type UserInfoDto } from '../components/CounterHeader';
 import SessionStartScreen from '../components/SessionStartScreen';
 import { Outlet } from 'react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { authService } from '@/services/authService';
 
 export default function CounterLayout() {
   const [isSessionStarted, setIsSessionStarted] = useState(false);
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
   const [selectedCounter, setSelectedCounter] = useState('01');
+  const [userInfo, setUserInfo] = useState<UserInfoDto | null>(null);
+
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const [profileRes, activeSessionRes]: any = await Promise.allSettled([
+          authService.getProfile(),
+          authService.getActiveCounterSession()
+        ]);
+        
+        if (profileRes.status === 'fulfilled' && profileRes.value) {
+          const res = profileRes.value;
+          if (res.data) {
+             setUserInfo(res.data);
+          } else {
+             setUserInfo(res as UserInfoDto);
+          }
+        }
+        
+        if (activeSessionRes.status === 'fulfilled' && activeSessionRes.value) {
+           const sessionData = activeSessionRes.value.data || activeSessionRes.value;
+           if (sessionData && sessionData.id) {
+              setIsSessionStarted(true);
+              if (sessionData.counterId) {
+                setSelectedCounter(sessionData.counterId.toString());
+              }
+           }
+        }
+      } catch (err) {
+        console.error('Lỗi khi lấy dữ liệu ban đầu', err);
+      } finally {
+        setIsCheckingSession(false);
+      }
+    };
+    fetchInitialData();
+  }, []);
+
+  if (isCheckingSession) {
+    return (
+      <div className="min-h-screen bg-[#f9f9ff] flex flex-col items-center justify-center">
+        <span className="material-symbols-outlined text-4xl text-[#003063] animate-spin mb-4">sync</span>
+        <p className="text-slate-500 font-medium animate-pulse">Đang định tuyến hệ thống...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-[#f9f9ff] text-[#191c20] antialiased overflow-x-hidden min-h-screen font-sans">
-      <CounterSidebar />
-      <main className="md:ml-64 h-screen flex flex-col">
-        <CounterHeader />
+      {/* <CounterSidebar /> */}
+      <main className="h-screen flex flex-col">
+        <CounterHeader user={userInfo} isSessionStarted={isSessionStarted} />
         <div className="flex-1 p-6 md:p-8 pb-24 mx-auto space-y-6 w-full overflow-y-auto">
           {!isSessionStarted ? (
             <SessionStartScreen 

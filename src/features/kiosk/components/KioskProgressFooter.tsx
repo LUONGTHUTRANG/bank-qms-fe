@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { useKioskStore } from '@/stores/useKioskStore';
 
 interface KioskProgressFooterProps {
   currentStep: number;
@@ -10,6 +11,7 @@ interface KioskProgressFooterProps {
 export default function KioskProgressFooter({ currentStep, hideBackButton = false }: KioskProgressFooterProps) {
   const navigate = useNavigate();
   const { t } = useTranslation();
+  const resetStore = useKioskStore(state => state.reset);
   
   return (
     <footer className="fixed bottom-0 left-0 w-full p-6 md:p-10 flex border-t border-outline-variant/10 xl:border-none xl:bg-transparent bg-white/90 backdrop-blur-xl z-20 flex-col items-center justify-center pointer-events-none transition-all">
@@ -29,7 +31,7 @@ export default function KioskProgressFooter({ currentStep, hideBackButton = fals
         )}
 
         <div className="flex items-center justify-center gap-2 md:gap-3">
-          {[1, 2, 3, 4].map((step) => (
+          {[1, 2, 3].map((step) => (
              step === currentStep 
                ? <motion.div key={`step-${step}`} layoutId="active-kiosk-step" className="w-8 md:w-10 h-2.5 md:h-3 rounded-full bg-primary shadow-sm shadow-primary/30 transition-shadow"></motion.div>
                : <motion.div key={`step-${step}`} layoutId={`kiosk-dot-${step}`} className="w-2.5 md:w-3 h-2.5 md:h-3 rounded-full bg-outline-variant/30"></motion.div>
@@ -40,7 +42,8 @@ export default function KioskProgressFooter({ currentStep, hideBackButton = fals
         <div className="absolute right-0 pointer-events-auto">
           <button 
             onClick={() => {
-              // TODO: Reset toàn bộ Zustand state/luồng đăng ký tại đây khi tích hợp thực tế
+              // Reset toàn bộ Zustand state/luồng đăng ký tại đây khi đóng
+              resetStore();
               navigate('/kiosk');
             }}
             className="group flex flex-row-reverse items-center justify-center gap-2 md:gap-3 text-error font-bold transition-all p-2 pl-4 rounded-full hover:bg-error/5 cursor-pointer relative overflow-hidden"

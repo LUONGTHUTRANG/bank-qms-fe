@@ -1,21 +1,29 @@
 import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router';
+import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
 import KioskHeader from '@/features/kiosk/components/KioskHeader';
+import { useKioskStore } from '@/stores/useKioskStore';
+import { toast } from '@/stores/useToastStore';
+import { kioskService } from '@/services/kioskService';
 
 export default function KioskPhoneInputPage() {
   const navigate = useNavigate();
-  const location = useLocation();
-  const { t } = useTranslation();
-  const [phoneNumber, setPhoneNumber] = useState('');
-
-  // Lấy dữ liệu service được chọn từ màn hình trước
-  // state có dạng { service: 'regular' | 'priority' | 'corporate', hasAccount: boolean }
-  // const { service, hasAccount } = location.state || {}; // Có thể dùng khi dispatch action lên API
+  const { t, i18n } = useTranslation();
+  
+  const savedPhone = useKioskStore(state => state.phoneNumber);
+  const customerSegmentId = useKioskStore(state => state.customerSegmentId);
+  const setStorePhone = useKioskStore(state => state.setPhoneNumber);
+  
+  // Lược bỏ số 0 ở đầu nếu store đã có lưu (ví dụ 090...) để phần state chỉ quản lý các số sau
+  const initialPhone = savedPhone && savedPhone.startsWith('0') ? savedPhone.substring(1) : (savedPhone || '');
+  const [phoneNumber, setPhoneNumber] = useState(initialPhone);
+  const [isVerifying, setIsVerifying] = useState(false);
 
   const handleKeyPress = (num: string) => {
-    if (phoneNumber.length < 11) {
+    // Bỏ qua nếu người dùng cố bấm số 0 đầu tiên (do UI luôn hiện (0) ở trước rồi)
+    if (phoneNumber.length === 0 && num === '0') return;
+    if (phoneNumber.length < 10) {
       setPhoneNumber(prev => prev + num);
     }
   };
@@ -28,20 +36,57 @@ export default function KioskPhoneInputPage() {
     setPhoneNumber('');
   };
 
-  const handleContinue = () => {
-    // Chuyển hướng đến bước tiếp theo (VD: chọn quầy/in vé)
-    navigate('/kiosk/choose-service', { state: { phone: phoneNumber } });
+  const handleContinue = async () => {
+    const fullPhone = '0' + phoneNumber;
+    if (fullPhone.length < 10) {
+      toast.warning('Vui lòng nhập số điện thoại hợp lệ (gồm 10-11 số)', 'Lưu ý');
+      return;
+    }
+
+    if (customerSegmentId) {
+      try {
+        setIsVerifying(true);
+        const res: any = await kioskService.checkCustomerSegment({
+          phoneNumber: fullPhone,
+          customerSegmentId
+        });
+        
+        // Dựa vào cấu trúc dữ liệu API trả về gần nhất: data: { valid: false }
+        const isValid = res?.data?.valid ?? res?.valid;
+        
+        if (isValid === false) {
+          const isVietnamese = i18n.language === 'vi';
+          const errorMessage = isVietnamese 
+            ? 'Khách hàng không tồn tại hoặc không thuộc phân khúc đã chọn.' 
+            : 'Customer NOT found or does not belong to the selected segment.';
+          const errorTitle = isVietnamese ? 'Thông báo' : 'Notice';
+          
+          toast.error(errorMessage, errorTitle);
+          setIsVerifying(false);
+          return;
+        }
+      } catch (error: any) {
+        console.error('Lỗi khi kiểm tra phân khúc khách hàng:', error);
+        toast.error(error?.response?.data?.message || 'Không thể kiểm tra thông tin khách hàng lúc này. Vui lòng thử lại sau.');
+        setIsVerifying(false);
+        return;
+      }
+    }
+
+    setIsVerifying(false);
+    setStorePhone(fullPhone);
+    navigate('/kiosk/choose-service');
   };
 
-  // Format số điện thoại hiển thị (thêm khoảng trắng cho dễ nhìn VD: 090 123 4567)
+  // Format số điện thoại hiển thị (thêm khoảng trắng cho dễ nhìn VD: (0) 90 123 4567)
   const formattedPhone = () => {
     if (!phoneNumber) return 'Nhập số điện thoại';
     let formatted = phoneNumber;
-    if (formatted.length > 3) {
-      formatted = formatted.slice(0, 3) + ' ' + formatted.slice(3);
+    if (formatted.length > 2) {
+      formatted = formatted.slice(0, 2) + ' ' + formatted.slice(2);
     }
-    if (formatted.length > 7) {
-      formatted = formatted.slice(0, 7) + ' ' + formatted.slice(7);
+    if (formatted.length > 6) {
+      formatted = formatted.slice(0, 6) + ' ' + formatted.slice(6);
     }
     return formatted;
   };
@@ -80,7 +125,7 @@ export default function KioskPhoneInputPage() {
         >
           <div className="bg-surface-container-lowest shadow-[0_40px_60px_-15px_rgba(0,48,99,0.08)] rounded-xl px-6 md:px-12 py-6 xl:py-8 flex flex-col items-center justify-center min-h-[100px] transition-all duration-300 border border-outline-variant/10">
             <div className="flex items-center gap-2 md:gap-4">
-              <span className="text-primary opacity-50 text-2xl md:text-3xl font-bold tracking-tight">+84</span>
+              <span className="text-primary opacity-50 text-2xl md:text-3xl font-bold tracking-tight">(0)</span>
               <div className={`text-3xl md:text-4xl lg:text-5xl font-extrabold tracking-tight leading-none ${phoneNumber ? 'text-primary' : 'text-outline-variant'}`}>
                 {formattedPhone()}
               </div>
@@ -145,11 +190,20 @@ export default function KioskPhoneInputPage() {
           
           <button 
             onClick={handleContinue}
-            disabled={phoneNumber.length < 9}
+            disabled={phoneNumber.length < 9 || isVerifying}
             className="flex-[2] h-14 md:h-16 rounded-[1.25rem] bg-gradient-to-br from-primary to-primary-container text-white text-lg font-bold shadow-[0_20px_40px_rgba(0,48,99,0.15)] hover:shadow-[0_20px_40px_rgba(0,48,99,0.25)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 disabled:hover:shadow-none enabled:hover:scale-[1.02] enabled:active:scale-[0.98] cursor-pointer"
           >
-            {t('kiosk.phoneInput.continue')}
-            <span className="material-symbols-outlined text-2xl md:text-3xl">arrow_forward</span>
+            {isVerifying ? (
+              <>
+                <span>Đang kiểm tra...</span>
+                <span className="material-symbols-outlined text-2xl md:text-3xl animate-spin">progress_activity</span>
+              </>
+            ) : (
+              <>
+                <span>{t('kiosk.phoneInput.continue')}</span>
+                <span className="material-symbols-outlined text-2xl md:text-3xl">arrow_forward</span>
+              </>
+            )}
           </button>
         </motion.div>
       </main>

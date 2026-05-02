@@ -5,11 +5,13 @@ import { useTranslation } from 'react-i18next';
 import KioskHeader from '@/features/kiosk/components/KioskHeader';
 import KioskFooter from '@/features/kiosk/components/KioskFooter';
 import type { ServiceData } from '@/features/kiosk/components/ConfirmServiceModal';
+import { useKioskStore } from '@/stores/useKioskStore';
 
 export default function KioskPrintingPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
+  const resetStore = useKioskStore(state => state.reset);
   
   const [ticketNumber, setTicketNumber] = useState('A105');
   const [serviceName, setServiceName] = useState('Giao dịch Quầy ưu tiên');
@@ -17,31 +19,32 @@ export default function KioskPrintingPage() {
   const [isExiting, setIsExiting] = useState(false);
   
   useEffect(() => {
-    // Nếu có truyền data service qua state từ màn chọn, lấy gán cho hiển thị ticket
-    if (location.state?.service) {
-      const s = location.state.service as ServiceData;
-      setServiceName(s.title);
-      // Tạo mock số vé dựa trên id màn hình (VD: ID Axxx cho deposit, Bxxx...)
-      const prefix = s.title.charAt(0).toUpperCase();
-      setTicketNumber(`${prefix}${Math.floor(100 + Math.random() * 900)}`);
-    } else if (location.state?.serviceId) {
-      // Fallback
-      setServiceName(location.state.serviceId);
+    // Nếu có truyền ticket data từ API create ticket
+    if (location.state?.ticket) {
+      const ticketData = location.state.ticket;
+      setTicketNumber(ticketData.ticketNo || 'A105');
+      // Chúng ta có thể lấy tên group/service từ màn hình trước truyền vào, hoặc fallback tạm
+      // Từ KioskChooseServicePage, ta đã truyền group name/id nếu cần. 
+      // Ở đây ta dùng tên dịch vụ trước nếu pass kèm
+    }
+    if (location.state?.serviceName) {
+      setServiceName(location.state.serviceName);
     }
     
-    // Giả lập trạng thái in thành công sau 3 giây
+    // Giả lập trạng thái in thành công sau 5 giây (Tăng thời gian in)
     const printTimer = setTimeout(() => {
       setIsPrinted(true);
-    }, 3000);
+    }, 5000);
     
-    // Tự động chuyển về Home sau 7s giả lập in xong (3s in + 4s chờ)
+    // Tự động chuyển về Home sau 10s giả lập in xong (5s in + 5s chờ)
     const exitTimer = setTimeout(() => {
       setIsExiting(true);
       // Chờ animation exit chạy khoảng 600ms rồi mới redirect thực sự
       setTimeout(() => {
+        resetStore();
         navigate('/kiosk', { replace: true });
       }, 600);
-    }, 7000);
+    }, 10000);
     
     return () => {
       clearTimeout(printTimer);

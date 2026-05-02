@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useLocation } from 'react-router';
 import { motion } from 'framer-motion';
 import backgroundImage from '@/assets/images/background-queuing.png';
 import { authService } from '@/services/authService';
@@ -7,6 +7,7 @@ import { toast } from '@/stores/useToastStore';
 
 export default function CounterLoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [empId, setEmpId] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,17 +24,22 @@ export default function CounterLoginPage() {
 
     try {
       // API Login
-      const data: any = await authService.login(empId, password);
-      // Giả sử API trả về token nằm ở data.data.token hoặc tương đương
-      // Lưu lại token, ví dụ lấy giả định từ data.access_token:
-      if (data && data.access_token) {
-        localStorage.setItem('access_token', data.access_token);
+      const res: any = await authService.login(empId, password);
+      // Dựa vào cấu trúc JSON response mới cập nhật: res.data chứa accessToken
+      const token = res?.data?.accessToken;
+      const refreshToken = res?.data?.refreshToken;
+      if (token) {
+        localStorage.setItem('access_token', token);
+        if (refreshToken) {
+          localStorage.setItem('refresh_token', refreshToken);
+        }
       }
       
       toast.success('Đăng nhập thành công', 'Chào mừng');
       
-      // Navigate to counter dashboard sau khi login thành công
-      navigate('/counter');
+      // Navigate to where they came from or default to dashboard
+      const from = location.state?.from?.pathname || '/counter';
+      navigate(from, { replace: true });
     } catch (error: any) {
       // Chỉ hiển thị toast lỗi đăng nhập nếu đó là lỗi do server trả về.
       // Nếu không có response (ví dụ: máy chủ sập, mất mạng), axiosClient interceptor đã tự hiện toast "Mất kết nối".
@@ -82,12 +88,12 @@ export default function CounterLoginPage() {
               transition={{ duration: 0.5, delay: 0.1, ease: "easeOut" }}
               className="flex flex-col gap-2"
             >
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#ededf4] rounded-full w-fit">
+              {/* <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#ededf4] rounded-full w-fit">
                 <span className="material-symbols-outlined text-sm text-[#566067]">lock</span>
                 <span className="font-label text-xs font-semibold text-[#424751]">
                   Khu vực Xác thực Bảo mật
                 </span>
-              </span>
+              </span> */}
               <h1 className="font-headline text-3xl lg:text-[2.5rem] leading-tight font-bold text-[#191c20] tracking-tight mt-2 lg:mt-4">
                 Đăng nhập Hệ thống
               </h1>

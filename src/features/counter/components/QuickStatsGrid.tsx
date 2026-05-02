@@ -9,29 +9,29 @@ export default function QuickStatsGrid() {
         <span className="material-symbols-outlined text-[#003063] mb-3 text-[24px]" style={{ fontVariationSettings: "'FILL' 1" }}>person_search</span>
         <div>
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-0.5">Đang chờ</p>
-          <p className="text-2xl xl:text-3xl font-black text-[#003063]">12</p>
+          <p className="text-2xl xl:text-3xl font-black text-[#003063]">--</p>
         </div>
       </div>
       <div className="col-span-1 lg:col-span-3 bg-white px-4 xl:px-5 py-4 rounded-xl flex flex-col justify-between shadow-sm border border-slate-200/60 cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all duration-300">
         <span className="material-symbols-outlined text-slate-400 mb-3 text-[24px]">timer</span>
         <div>
           <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider mb-0.5">Chờ TB</p>
-          <p className="text-xl xl:text-2xl font-black text-[#191c20]">08:15</p>
-          <p className="text-[9px] xl:text-[10px] text-green-600 font-bold mt-1">↓ 2m</p>
+          <p className="text-xl xl:text-2xl font-black text-[#191c20]">--:--</p>
+          <p className="text-[9px] xl:text-[10px] text-slate-400 font-bold mt-1">--</p>
         </div>
       </div>
       <div className="col-span-1 lg:col-span-2 bg-white px-3 xl:px-4 py-4 rounded-xl flex flex-col justify-between shadow-sm border border-slate-200/60 cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all duration-300">
         <span className="material-symbols-outlined text-emerald-500 mb-3 text-[20px] xl:text-[24px]">check_circle</span>
         <div>
           <p className="text-slate-500 text-[9px] xl:text-[10px] font-bold uppercase tracking-wider mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">Đã phục vụ</p>
-          <p className="text-lg xl:text-2xl font-black text-[#191c20]">42 <span className="text-xs xl:text-sm font-semibold text-slate-500 tracking-normal hidden xl:inline">khách</span></p>
+          <p className="text-lg xl:text-2xl font-black text-[#191c20]">-- <span className="text-xs xl:text-sm font-semibold text-slate-500 tracking-normal hidden xl:inline">khách</span></p>
         </div>
       </div>
       <div className="col-span-1 lg:col-span-2 bg-white px-3 xl:px-4 py-4 rounded-xl flex flex-col justify-between shadow-sm border border-slate-200/60 cursor-pointer hover:-translate-y-1 hover:shadow-md transition-all duration-300">
         <span className="material-symbols-outlined text-[#003063] mb-3 text-[20px] xl:text-[24px]">history_toggle_off</span>
         <div>
           <p className="text-slate-500 text-[9px] xl:text-[10px] font-bold uppercase tracking-wider mb-0.5 whitespace-nowrap overflow-hidden text-ellipsis">TG Phục vụ</p>
-          <p className="text-lg xl:text-2xl font-black text-[#191c20]">03:45</p>
+          <p className="text-lg xl:text-2xl font-black text-[#191c20]">--:--</p>
         </div>
       </div>
       <div 

@@ -1,15 +1,37 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import KioskHeader from '@/features/kiosk/components/KioskHeader';
-import AccountCheckModal from '@/features/kiosk/components/AccountCheckModal';
 import KioskProgressFooter from '@/features/kiosk/components/KioskProgressFooter';
+import { useKioskStore } from '@/stores/useKioskStore';
+import { kioskService } from '@/services/kioskService';
 
 export default function KioskSelectCustomerTypePage() {
   const navigate = useNavigate();
   const { t } = useTranslation();
-  const [showAccountModal, setShowAccountModal] = useState(false);
+  const setCustomerSegment = useKioskStore((state) => state.setCustomerSegment);
+  const [segments, setSegments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSegments = async () => {
+      try {
+        const res = await kioskService.getCustomerSegments();
+        setSegments(res.data);
+      } catch (error) {
+        console.error('Failed to fetch customer segments:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSegments();
+  }, []);
+  
+  const handleSelectCustomerType = (code: string, id: number) => {
+    setCustomerSegment(code, id);
+    navigate('/kiosk/choose-service');
+  };
 
   return (
     <div className="bg-surface text-on-surface h-screen flex flex-col relative overflow-y-auto overflow-x-hidden font-sans">
@@ -43,79 +65,87 @@ export default function KioskSelectCustomerTypePage() {
         </motion.div>
 
         {/* Selection Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 w-full max-w-6xl relative z-10">
+        <div className="flex flex-wrap justify-center gap-6 lg:gap-8 max-w-6xl relative z-10">
           
-          {/* Individual Selection */}
-          <motion.button 
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            onClick={() => setShowAccountModal(true)}
-            className="group relative flex flex-col items-center justify-between p-6 lg:p-8 bg-gradient-to-br from-[#f8fbff] to-[#eef5fe] rounded-2xl shadow-[0_20px_40px_rgba(0,48,99,0.05)] hover:shadow-[0_40px_80px_rgba(0,48,99,0.12)] transition-all duration-500 hover:-translate-y-2 border border-[#d0e1f9] hover:border-primary/30 text-left h-full min-h-[250px] lg:min-h-[320px] cursor-pointer overflow-hidden"
-          >
-            {/* Soft decorative background accent */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-blue-200/20 rounded-bl-full -mr-6 -mt-6 transition-transform duration-500 group-hover:scale-150 pointer-events-none"></div>
-            
-            <div className="w-14 h-14 lg:w-20 lg:h-20 rounded-full bg-white flex items-center justify-center mb-4 lg:mb-6 group-hover:bg-blue-50 transition-colors duration-300 relative z-10 shadow-sm border border-blue-50">
-              <span className="material-symbols-outlined text-primary text-2xl lg:text-4xl">person</span>
+          {loading ? (
+            <div className="w-full text-center py-10">
+              <div className="loading loading-spinner text-primary loading-lg"></div>
             </div>
-            <div className="flex-grow text-center w-full relative z-10">
-              <h2 className="text-xl lg:text-2xl font-black text-primary mb-2 lg:mb-3 tracking-tight">{t('kiosk.selectService.regular.title')}</h2>
-              <p className="text-slate-600 text-sm lg:text-base font-medium leading-relaxed max-xl:line-clamp-3">{t('kiosk.selectService.regular.desc')}</p>
-            </div>
-            <div className="mt-4 lg:mt-6 w-full py-3 lg:py-4 px-4 rounded-full bg-white border border-blue-100 group-hover:bg-primary group-hover:border-primary transition-all duration-300 flex items-center justify-center gap-2 relative z-10 w-[95%] mx-auto">
-              <span className="text-primary group-hover:text-white font-bold text-xs lg:text-sm uppercase tracking-wide transition-colors duration-300 text-center leading-tight whitespace-nowrap">{t('kiosk.selectService.regular.action')}</span>
-              <span className="material-symbols-outlined text-primary group-hover:text-white transition-colors duration-300 shrink-0">chevron_right</span>
-            </div>
-          </motion.button>
+          ) : (
+            segments.map((segment) => {
+              const code = segment.code;
+              
+              // Map visual styles based on code
+              const isPersonal = code === 'PERSONAL';
+              const isVIP = code === 'VIP';
+              
+              const baseGradient = isVIP 
+                ? 'from-[#fffdf8] to-[#fcf4e4]'
+                : isPersonal 
+                  ? 'from-[#f8fbff] to-[#eef5fe]'
+                  : 'from-[#f8f9fa] to-[#eef0f3]';
+                  
+              const shadowColor = isVIP 
+                ? 'rgba(180,106,0,0.05)'
+                : isPersonal 
+                  ? 'rgba(0,48,99,0.05)'
+                  : 'rgba(15,23,42,0.05)';
+                  
+              const hoverShadowColor = isVIP 
+                ? 'rgba(180,106,0,0.12)'
+                : isPersonal 
+                  ? 'rgba(0,48,99,0.12)'
+                  : 'rgba(15,23,42,0.12)';
+                  
+              const borderColor = isVIP ? 'border-[#f3e1bd]' : isPersonal ? 'border-[#d0e1f9]' : 'border-[#e2e8f0]';
+              const hoverBorderColor = isVIP ? 'hover:border-[#B46A00]/30' : isPersonal ? 'hover:border-primary/30' : 'hover:border-slate-400/30';
+              
+              const accentBg = isVIP ? 'bg-orange-200/20' : isPersonal ? 'bg-blue-200/20' : 'bg-slate-200/40';
+              
+              const iconContainerBg = isVIP ? 'hover:bg-orange-50 border-orange-50' : isPersonal ? 'hover:bg-blue-50 border-blue-50' : 'hover:bg-slate-100 border-slate-100';
+              const iconColor = isVIP ? 'text-[#B46A00]' : isPersonal ? 'text-primary' : 'text-slate-700';
+              
+              const titleColor = isVIP ? 'text-[#8A5100]' : isPersonal ? 'text-primary' : 'text-slate-800';
+              const descColor = isVIP ? 'text-[#8A5100]/70' : isPersonal ? 'text-slate-600' : 'text-slate-600';
+              
+              const buttonBorderColor = isVIP ? 'border-orange-100' : isPersonal ? 'border-blue-100' : 'border-slate-200';
+              const buttonGroupHover = isVIP ? 'group-hover:bg-[#B46A00] group-hover:border-[#B46A00]' : isPersonal ? 'group-hover:bg-primary group-hover:border-primary' : 'group-hover:bg-slate-700 group-hover:border-slate-700';
+              const buttonTextColor = isVIP ? 'text-[#B46A00]' : isPersonal ? 'text-primary' : 'text-slate-700';
 
-          {/* Priority Selection */}
-          <motion.button 
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            onClick={() => navigate('/kiosk/phone-input', { state: { service: 'priority', hasAccount: true } })}
-            className="group relative flex flex-col items-center justify-between p-6 lg:p-8 bg-gradient-to-br from-[#fffdf8] to-[#fcf4e4] rounded-2xl shadow-[0_20px_40px_rgba(180,106,0,0.05)] hover:shadow-[0_40px_80px_rgba(180,106,0,0.12)] transition-all duration-500 hover:-translate-y-2 border border-[#f3e1bd] hover:border-[#B46A00]/30 text-left h-full min-h-[250px] lg:min-h-[320px] cursor-pointer overflow-hidden"
-          >
-            {/* Soft decorative background accent */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-orange-200/20 rounded-bl-full -mr-6 -mt-6 transition-transform duration-500 group-hover:scale-150 pointer-events-none"></div>
-            
-            <div className="w-14 h-14 lg:w-20 lg:h-20 rounded-full bg-white flex items-center justify-center mb-4 lg:mb-6 group-hover:bg-orange-50 transition-colors duration-300 relative z-10 shadow-[0_4px_20px_rgba(180,106,0,0.08)] border border-orange-50">
-              <span className="material-symbols-outlined text-[#B46A00] text-2xl lg:text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
-            </div>
-            <div className="flex-grow text-center w-full relative z-10">
-              <h2 className="text-xl lg:text-2xl font-black text-[#8A5100] mb-2 lg:mb-3 tracking-tight">{t('kiosk.selectService.priority.title')}</h2>
-              <p className="text-[#8A5100]/70 text-sm lg:text-base font-medium leading-relaxed max-xl:line-clamp-3">{t('kiosk.selectService.priority.desc')}</p>
-            </div>
-            <div className="mt-4 lg:mt-6 w-full py-3 lg:py-4 px-4 rounded-full bg-white border border-orange-100 group-hover:bg-[#B46A00] group-hover:border-[#B46A00] transition-all duration-300 flex items-center justify-center gap-2 relative z-10 w-[95%] mx-auto">
-              <span className="text-[#B46A00] group-hover:text-white font-bold text-xs lg:text-sm uppercase tracking-wide transition-colors duration-300 text-center leading-tight whitespace-nowrap">{t('kiosk.selectService.priority.action')}</span>
-              <span className="material-symbols-outlined text-[#B46A00] group-hover:text-white transition-colors duration-300 shrink-0">verified</span>
-            </div>
-          </motion.button>
+              let iconName = 'person';
+              if (isVIP) iconName = 'star';
+              else if (!isPersonal) iconName = 'business';
 
-          {/* Corporate Selection */}
-          <motion.button 
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
-            onClick={() => navigate('/kiosk/phone-input', { state: { service: 'corporate', hasAccount: true } })}
-            className="group relative flex flex-col items-center justify-between p-6 lg:p-8 bg-gradient-to-br from-[#f8f9fa] to-[#eef0f3] rounded-2xl shadow-[0_20px_40px_rgba(15,23,42,0.05)] hover:shadow-[0_40px_80px_rgba(15,23,42,0.12)] transition-all duration-500 hover:-translate-y-2 border border-[#e2e8f0] hover:border-slate-400/30 text-left h-full min-h-[250px] lg:min-h-[320px] cursor-pointer overflow-hidden"
-          >
-            {/* Soft decorative background accent */}
-            <div className="absolute top-0 right-0 w-24 h-24 bg-slate-200/40 rounded-bl-full -mr-6 -mt-6 transition-transform duration-500 group-hover:scale-150 pointer-events-none"></div>
-
-            <div className="w-14 h-14 lg:w-20 lg:h-20 rounded-full bg-white flex items-center justify-center mb-4 lg:mb-6 group-hover:bg-slate-100 transition-colors duration-300 relative z-10 shadow-sm border border-slate-100">
-              <span className="material-symbols-outlined text-slate-700 text-2xl lg:text-4xl">business</span>
-            </div>
-            <div className="flex-grow text-center w-full relative z-10">
-              <h2 className="text-xl lg:text-2xl font-black text-slate-800 mb-2 lg:mb-3 tracking-tight">{t('kiosk.selectService.corporate.title')}</h2>
-              <p className="text-slate-600 text-sm lg:text-base font-medium leading-relaxed max-xl:line-clamp-3">{t('kiosk.selectService.corporate.desc')}</p>
-            </div>
-            <div className="mt-4 lg:mt-6 w-full py-3 lg:py-4 px-4 rounded-full bg-white border border-slate-200 group-hover:bg-slate-700 group-hover:border-slate-700 transition-all duration-300 flex items-center justify-center gap-2 relative z-10 w-[95%] mx-auto">
-              <span className="text-slate-700 group-hover:text-white font-bold text-xs lg:text-sm uppercase tracking-wide transition-colors duration-300 text-center leading-tight whitespace-nowrap">{t('kiosk.selectService.corporate.action')}</span>
-              <span className="material-symbols-outlined text-slate-700 group-hover:text-white transition-colors duration-300 shrink-0">corporate_fare</span>
-            </div>
-          </motion.button>
+              return (
+                <motion.button 
+                  key={segment.id}
+                  initial={{ opacity: 0, y: 40 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.6, delay: 0.1 }}
+                  onClick={() => handleSelectCustomerType(code, segment.id)}
+                  className={`group relative flex flex-col items-center justify-between p-6 lg:p-8 bg-gradient-to-br ${baseGradient} rounded-2xl shadow-[0_20px_40px_${shadowColor}] hover:shadow-[0_40px_80px_${hoverShadowColor}] transition-all duration-500 hover:-translate-y-2 border ${borderColor} ${hoverBorderColor} text-left h-full min-h-[250px] lg:min-h-[320px] w-80 cursor-pointer overflow-hidden`}
+                >
+                  <div className={`absolute top-0 right-0 w-24 h-24 ${accentBg} rounded-bl-full -mr-6 -mt-6 transition-transform duration-500 group-hover:scale-150 pointer-events-none`}></div>
+                  
+                  <div className={`w-14 h-14 lg:w-20 lg:h-20 rounded-full bg-white flex items-center justify-center mb-4 lg:mb-6 transition-colors duration-300 relative z-10 shadow-sm border ${iconContainerBg}`}>
+                    <span className={`material-symbols-outlined ${iconColor} text-2xl lg:text-4xl`} style={isVIP ? { fontVariationSettings: "'FILL' 1" } : {}}>{iconName}</span>
+                  </div>
+                  <div className="flex-grow text-center w-full relative z-10">
+                    <h2 className={`text-xl lg:text-2xl font-black ${titleColor} mb-2 lg:mb-3 tracking-tight`}>{segment.name}</h2>
+                    <p className={`${descColor} text-sm lg:text-base font-medium leading-relaxed max-xl:line-clamp-3`}>{segment.description || segment.name}</p>
+                  </div>
+                  <div className={`mt-4 lg:mt-6 w-full py-3 lg:py-4 px-4 rounded-full bg-white border ${buttonBorderColor} ${buttonGroupHover} transition-all duration-300 flex items-center justify-center gap-2 relative z-10 w-[95%] mx-auto`}>
+                    <span className={`${buttonTextColor} group-hover:text-white font-bold text-xs lg:text-sm uppercase tracking-wide transition-colors duration-300 text-center leading-tight whitespace-nowrap`}>
+                      {t(`kiosk.selectService.${isVIP ? 'priority' : isPersonal ? 'regular' : 'corporate'}.action`, 'Tiếp tục')}
+                    </span>
+                    <span className={`material-symbols-outlined ${buttonTextColor} group-hover:text-white transition-colors duration-300 shrink-0`}>
+                      {isVIP ? 'verified' : isPersonal ? 'chevron_right' : 'corporate_fare'}
+                    </span>
+                  </div>
+                </motion.button>
+              );
+            })
+          )}
         </div>
       </main>
 
@@ -132,12 +162,6 @@ export default function KioskSelectCustomerTypePage() {
 
       {/* Progress Orbit Footer */}
       <KioskProgressFooter currentStep={1} />
-
-      {/* Extracted Account Check Modal */}
-      <AccountCheckModal 
-        isOpen={showAccountModal} 
-        onClose={() => setShowAccountModal(false)} 
-      />
     </div>
   );
 }

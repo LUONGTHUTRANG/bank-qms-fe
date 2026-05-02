@@ -1,32 +1,111 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TransferCounterModal from './TransferCounterModal';
+import { useQueueStore } from '@/stores/useQueueStore';
 
 export default function CurrentServingCard() {
   const [servingState, setServingState] = useState<'idle' | 'calling' | 'serving' | 'completed'>('idle');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
-  const handleCallNext = () => {
-    setServingState('calling');
+  const { currentTicket, callNextTicket, isCalling, fetchCurrentTicket, updateCurrentTicketStatus } = useQueueStore();
+
+  // Load current active ticket on mount
+  useEffect(() => {
+    const loadCurrentTicket = async () => {
+      const ticket = await fetchCurrentTicket();
+      if (ticket) {
+        if (ticket.status === 'CALLED') {
+          setServingState('calling');
+          // Calculate elapsed time from lastCalledAt if provided
+          if (ticket.lastCalledAt) {
+            const calledTime = new Date(ticket.lastCalledAt).getTime();
+            const now = new Date().getTime();
+            setElapsedTime(Math.floor((now - calledTime) / 1000));
+          }
+        } else if (ticket.status === 'SERVING') {
+          setServingState('serving');
+          // Calculate elapsed time from servingAt if provided
+          if (ticket.servingAt) {
+            const servingTime = new Date(ticket.servingAt).getTime();
+            const now = new Date().getTime();
+            setElapsedTime(Math.floor((now - servingTime) / 1000));
+          }
+        }
+      }
+    };
+    loadCurrentTicket();
+  }, [fetchCurrentTicket]);
+
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval> | null = null;
+    
+    if (servingState === 'calling' || servingState === 'serving') {
+      interval = setInterval(() => {
+        setElapsedTime(prev => prev + 1);
+      }, 1000);
+    } else {
+      setElapsedTime(0);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [servingState]);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+    const s = (seconds % 60).toString().padStart(2, '0');
+    return `${m}:${s}`;
+  };
+
+  const handleCallNext = async () => {
+    const ticket = await callNextTicket();
+    if (ticket) {
+      setElapsedTime(0);
+      setServingState('calling');
+    }
   };
 
   const handleConfirmService = () => {
     setShowConfirmModal(true);
   };
 
-  const confirmStartService = () => {
+  const confirmStartService = async () => {
     setShowConfirmModal(false);
-    setServingState('serving');
+    
+    // Call API updates status to SERVING
+    if (currentTicket) {
+      const updated = await updateCurrentTicketStatus('SERVING');
+      if (updated) {
+        setElapsedTime(0);
+        setServingState('serving');
+      }
+    } else {
+      setElapsedTime(0);
+      setServingState('serving');
+    }
+  };
+
+  const handleCompleteService = async () => {
+    if (currentTicket) {
+      const updated = await updateCurrentTicketStatus('DONE');
+      if (updated) {
+        setServingState('completed');
+      }
+    } else {
+      setServingState('completed');
+    }
   };
 
   const handleEndService = () => {
     setServingState('completed');
   };
 
-  const handleTransferCounter = (counterId: string) => {
+  const handleTransferServiceGroup = (serviceGroupId: string, reason: string) => {
     // Implement transfer logic here
-    console.log('Transferred to counter:', counterId);
+    console.log('Transferred to service group:', serviceGroupId, 'Reason:', reason);
     setShowTransferModal(false);
     // Move to completed state as the session is removed from current counter
     setServingState('completed');
@@ -62,7 +141,7 @@ export default function CurrentServingCard() {
             <div className="flex items-baseline gap-6 mt-2">
               <h1 className={`text-5xl font-black tracking-tight transition-colors duration-300 
                 ${servingState === 'idle' ? 'text-slate-300' : 'text-[#003063]'}`}>
-                {servingState === 'idle' ? '----' : 'A105'}
+                {servingState === 'idle' ? '----' : currentTicket ? currentTicket.ticketNo : '----'}
               </h1>
             </div>
           </div>
@@ -70,7 +149,8 @@ export default function CurrentServingCard() {
           <div className={`text-right flex flex-col items-end transition-opacity duration-300 ${servingState === 'idle' ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}>
             <span className={`px-4 py-1.5 rounded-full text-xs font-bold inline-block mb-3 transition-colors
               ${servingState === 'completed' ? 'bg-slate-100 text-slate-500' : 'bg-blue-50 text-blue-800'}`}>
-              Giao dịch cá nhân
+              {currentTicket ? currentTicket.requestGroupId : 'Giao dịch cá nhân'} 
+              {/* Lưu ý: Sau này có thể cần fetch tên requestGroup hoặc truyền vào DTO */}
             </span>
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border inline-flex transition-colors duration-300
               ${servingState === 'serving' ? 'bg-green-50 border-green-100' : 
@@ -90,7 +170,7 @@ export default function CurrentServingCard() {
                 <span className={`text-lg font-black tabular-nums leading-none mt-0.5 
                   ${servingState === 'serving' ? 'text-green-700' : 
                     servingState === 'completed' ? 'text-slate-400' : 'text-slate-600'}`}>
-                  {servingState === 'serving' ? '00:03' : '01:15'}
+                  {formatTime(elapsedTime)}
                 </span>
               </div>
             </div>
@@ -128,7 +208,7 @@ export default function CurrentServingCard() {
           {(servingState === 'serving' || servingState === 'completed') && (
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <button 
-                onClick={servingState === 'serving' ? handleEndService : undefined} 
+                onClick={servingState === 'serving' ? handleCompleteService : undefined} 
                 disabled={servingState === 'completed'}
                 className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-xl transition-all
                   ${servingState === 'serving' 
@@ -177,17 +257,21 @@ export default function CurrentServingCard() {
           {(servingState === 'idle' || servingState === 'serving' || servingState === 'completed') && (
             <button 
               onClick={handleCallNext}
-              disabled={servingState === 'serving'}
+              disabled={servingState === 'serving' || isCalling}
               className={`w-full h-12 rounded-xl flex items-center justify-center gap-2 transition-all duration-300
-                ${servingState === 'idle' || servingState === 'completed'
+                ${(servingState === 'idle' || servingState === 'completed') && !isCalling
                   ? 'cursor-pointer bg-[#003063] hover:bg-[#00468c] text-white shadow-md group hover:scale-[1.01] active:scale-[0.98]' 
                   : 'cursor-not-allowed bg-slate-100 text-slate-400 border border-slate-200 opacity-60'}`}
             >
-              <span className={`material-symbols-outlined text-[20px] ${(servingState === 'idle' || servingState === 'completed') ? 'group-hover:translate-x-1 transition-transform' : ''}`}>
-                arrow_forward
-              </span>
+              {isCalling ? (
+                <span className="material-symbols-outlined text-[20px] animate-spin">refresh</span>
+              ) : (
+                <span className={`material-symbols-outlined text-[20px] ${(servingState === 'idle' || servingState === 'completed') ? 'group-hover:translate-x-1 transition-transform' : ''}`}>
+                  arrow_forward
+                </span>
+              )}
               <span className="text-[15px] font-bold">
-                Gọi số tiếp theo
+                {isCalling ? 'Đang gọi...' : 'Gọi số tiếp theo'}
               </span>
             </button>
           )}
@@ -216,7 +300,7 @@ export default function CurrentServingCard() {
               </div>
               <h3 className="text-xl font-bold text-center text-slate-800 mb-2">Xác nhận bắt đầu</h3>
               <p className="text-center text-slate-500 mb-6 text-sm">
-                Khách hàng <strong className="text-[#003063] mx-1">A105</strong> đã có mặt. Bạn có chắc chắn muốn bắt đầu ca phục vụ này?
+                Khách hàng <strong className="text-[#003063] mx-1">{currentTicket ? currentTicket.ticketNo : '---'}</strong> đã có mặt. Bạn có chắc chắn muốn bắt đầu ca phục vụ này?
               </p>
               
               <div className="grid grid-cols-2 gap-3">
@@ -238,11 +322,11 @@ export default function CurrentServingCard() {
         )}
       </AnimatePresence>
 
-      {/* Transfer Counter Modal */}
+      {/* Transfer Service Group Modal */}
       <TransferCounterModal 
         isOpen={showTransferModal}
         onClose={() => setShowTransferModal(false)}
-        onConfirm={handleTransferCounter}
+        onConfirm={handleTransferServiceGroup}
       />
     </>
   );
