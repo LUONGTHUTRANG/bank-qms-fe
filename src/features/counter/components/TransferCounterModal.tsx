@@ -6,7 +6,7 @@ import { kioskService } from '@/services/kioskService';
 interface TransferCounterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (serviceGroupId: string, reason: string) => void;
+  onConfirm: (serviceGroupId: string, reasonId: number) => void;
 }
 
 export default function TransferCounterModal({ isOpen, onClose, onConfirm }: TransferCounterModalProps) {
@@ -72,7 +72,10 @@ export default function TransferCounterModal({ isOpen, onClose, onConfirm }: Tra
 
   const handleConfirm = () => {
     if (selectedServiceGroup && selectedReason) {
-      onConfirm(selectedServiceGroup, selectedReason);
+      const selectedReasonObj = reasons.find(r => r.code === selectedReason);
+      if (selectedReasonObj) {
+        onConfirm(selectedServiceGroup, selectedReasonObj.id);
+      }
       setSelectedServiceGroup('');
       setSelectedReason('');
       setIsDropdownOpen(false);

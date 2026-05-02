@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TransferCounterModal from './TransferCounterModal';
 import { useQueueStore } from '@/stores/useQueueStore';
+import { kioskService } from '@/services/kioskService';
 
 export default function CurrentServingCard() {
   const [servingState, setServingState] = useState<'idle' | 'calling' | 'serving' | 'completed'>('idle');
@@ -103,12 +104,23 @@ export default function CurrentServingCard() {
     setServingState('completed');
   };
 
-  const handleTransferServiceGroup = (serviceGroupId: string, reason: string) => {
-    // Implement transfer logic here
-    console.log('Transferred to service group:', serviceGroupId, 'Reason:', reason);
-    setShowTransferModal(false);
-    // Move to completed state as the session is removed from current counter
-    setServingState('completed');
+  const handleTransferServiceGroup = async (serviceGroupId: string, reasonId: number) => {
+    if (!currentTicket?.id) {
+      console.error('No ticket ID available');
+      return;
+    }
+    
+    try {
+      await kioskService.transferTicket(currentTicket.id, {
+        newRequestGroupId: Number(serviceGroupId),
+        reasonId
+      });
+      console.log('Ticket transferred successfully');
+      setShowTransferModal(false);
+      setServingState('completed');
+    } catch (error) {
+      console.error('Error transferring ticket:', error);
+    }
   };
 
   return (

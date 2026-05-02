@@ -40,6 +40,11 @@ export interface TicketCreateRequest {
   phoneNumber: string;
 }
 
+export interface TransferTicketRequest {
+  newRequestGroupId: number;
+  reasonId: number;
+}
+
 export const kioskService = {
   getCustomerSegments: async () => {
     const res = await axiosClient.get('/v1/management/customer-segments');
@@ -65,6 +70,11 @@ export const kioskService = {
     const res = await axiosClient.get('/v1/management/reasons', {
       params: { type }
     });
+    return res;
+  },
+
+  transferTicket: async (ticketId: number, data: TransferTicketRequest) => {
+    const res = await axiosClient.post(`/v1/ticket/tickets/${ticketId}/transfer`, data);
     return res;
   },
 };

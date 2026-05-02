@@ -73,7 +73,15 @@ axiosClient.interceptors.response.use(
     if (error.response) {
       const { status } = error.response;
       
+      // Kiểm tra xem có phải login request không
+      const isLoginRequest = originalRequest.url?.includes('/v1/auth/login');
+      
       if (status === 401 && !originalRequest._retry) {
+        // Nếu là login request, không xử lý refresh token, để component login xử lý lỗi
+        if (isLoginRequest) {
+          return Promise.reject(error);
+        }
+        
         if (isRefreshing) {
           return new Promise(function(resolve, reject) {
             failedQueue.push({ resolve, reject });
@@ -117,6 +125,7 @@ axiosClient.interceptors.response.use(
           });
         } else {
            localStorage.removeItem('access_token');
+           localStorage.removeItem('refresh_token');
            toast.error("Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại.");
            window.location.href = '/counter/login'; // Redirect to login
         }

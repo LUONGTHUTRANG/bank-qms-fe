@@ -9,16 +9,19 @@ export default function QueueListSection() {
   
   const { queueTickets, isLoadingQueue } = useQueueStore();
 
+  // Lọc chỉ hiển thị tickets có status WAITING trong tab "Hàng đợi"
+  const waitingTickets = queueTickets.filter(ticket => ticket.status === 'WAITING' || !ticket.status);
+
   // Temporary calculate count mapping
   const counts = {
-    queue: queueTickets.length,
+    queue: waitingTickets.length,
     postponed: 0,
     cancelled: 0
   };
 
   // Pagination logic
-  const totalPages = Math.ceil(queueTickets.length / itemsPerPage);
-  const paginatedQueue = queueTickets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const totalPages = Math.ceil(waitingTickets.length / itemsPerPage);
+  const paginatedQueue = waitingTickets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <section className="space-y-4">
@@ -93,7 +96,7 @@ export default function QueueListSection() {
                     <div className="py-8 text-center text-slate-400 font-medium">
                        Đang tải dữ liệu hàng đợi...
                     </div>
-                  ) : queueTickets.length === 0 ? (
+                  ) : waitingTickets.length === 0 ? (
                      <div className="py-8 text-center text-slate-400 font-medium">
                        Chưa có khách chờ trong hàng đợi.
                      </div>
@@ -176,7 +179,7 @@ export default function QueueListSection() {
         {activeTab === 'queue' && totalPages > 1 && (
           <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-sm">
             <span className="text-slate-500">
-              Hiển thị <span className="font-semibold text-slate-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, queueTickets.length)}</span> trong tổng số <span className="font-semibold text-slate-700">{queueTickets.length}</span> vé
+              Hiển thị <span className="font-semibold text-slate-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, waitingTickets.length)}</span> trong tổng số <span className="font-semibold text-slate-700">{waitingTickets.length}</span> vé
             </span>
             <div className="flex items-center gap-2">
               <button

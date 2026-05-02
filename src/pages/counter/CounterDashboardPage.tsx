@@ -3,14 +3,11 @@ import { motion } from 'framer-motion';
 import CurrentServingCard from '@/features/counter/components/CurrentServingCard';
 import QuickStatsGrid from '@/features/counter/components/QuickStatsGrid';
 import QueueListSection from '@/features/counter/components/QueueListSection';
-import { authService } from '@/services/authService';
-import { useOutletContext } from 'react-router';
 import { socketService } from '@/services/socketService';
 import { appConfig } from '@/config/appConfig';
 import { toast } from '@/stores/useToastStore';
 import { useQueueStore } from '@/stores/useQueueStore';
-import type { UserInfoDto } from '@/features/counter/components/CounterHeader';
-import { ticketService } from '@/services/ticketService';
+import { ticketService, type SessionInfoDto } from '@/services/ticketService';
 
 // Container Variants for staggering animation
 const container = {
@@ -30,7 +27,47 @@ const item = {
 };
 
 export default function CounterDashboardPage() {
-  const { fetchQueue, addTicketToQueue } = useQueueStore();
+  const { fetchQueue, addTicketToQueue, updateTicketStatusInQueue } = useQueueStore();
+  const [sessionInfo, setSessionInfo] = useState<SessionInfoDto | null>(null);
+  const [servingTicketsCount, setServingTicketsCount] = useState(0);
+
+  // Fetch session info on mount
+  useEffect(() => {
+    const loadSessionInfo = async () => {
+      try {
+        const info = await ticketService.getSessionInfo();
+        setSessionInfo(info);
+
+        // Fetch current ticket to check if it's being served
+        const currentTicket = await ticketService.getCurrentTicket();
+        if (currentTicket && (currentTicket.status === 'CALLED' || currentTicket.status === 'SERVING')) {
+          // Vé đang được gọi hoặc phục vụ, bắt đầu đếm giờ
+          setServingTicketsCount(1);
+        } else {
+          setServingTicketsCount(0);
+        }
+      } catch (error) {
+        console.error('Error fetching session info:', error);
+      }
+    };
+    loadSessionInfo();
+  }, []);
+
+  // Service time counter - increment every second when serving tickets
+  useEffect(() => {
+    if (servingTicketsCount <= 0) return;
+
+    const interval = setInterval(() => {
+      setSessionInfo(prev =>
+        prev ? {
+          ...prev,
+          sessionDurationSeconds: prev.sessionDurationSeconds + 1
+        } : prev
+      );
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [servingTicketsCount]);
 
   useEffect(() => {
     // Load initial queue data
@@ -72,8 +109,46 @@ export default function CounterDashboardPage() {
                if (eventData?.action === 'NEW_TICKET' || eventData?.ticketNo) {
                   toast.info(`Có vé mới: ${eventData.ticketNo} - Kênh: ${topic}`);
                   addTicketToQueue(eventData);
+                  // Cập nhật session info: tăng waitingCount
+                  setSessionInfo(prev => prev ? { ...prev, waitingCount: prev.waitingCount + 1 } : prev);
+               } else if (eventData?.action === 'TICKET_STATUS_CHANGED') {
+                  // Xử lý sự kiện thay đổi trạng thái vé
+                  const { ticketId, newStatus, oldStatus } = eventData;
+                  console.log(`[TICKET_STATUS_CHANGE] Vé ID: ${ticketId}, ${oldStatus} => ${newStatus}`);
+                  updateTicketStatusInQueue(ticketId, newStatus);
+
+                  // Track serving tickets count for service time counter
+                  const isOldServing = oldStatus === 'CALLED' || oldStatus === 'SERVING';
+                  const isNewServing = newStatus === 'CALLED' || newStatus === 'SERVING';
+
+                  if (!isOldServing && isNewServing) {
+                    // Vé chuyển vào trạng thái phục vụ
+                    setServingTicketsCount(prev => prev + 1);
+                  } else if (isOldServing && !isNewServing) {
+                    // Vé rời khỏi trạng thái phục vụ
+                    setServingTicketsCount(prev => Math.max(0, prev - 1));
+                  }
+
+                  // Cập nhật session info dựa trên status thay đổi
+                  setSessionInfo(prev => {
+                    if (!prev) return prev;
+                    const updated = { ...prev };
+                    // Nếu từ WAITING sang trạng thái khác, giảm waitingCount
+                    if (oldStatus === 'WAITING' && newStatus !== 'WAITING') {
+                      updated.waitingCount = Math.max(0, updated.waitingCount - 1);
+                    }
+                    // Nếu sang DONE, tăng completedCount
+                    if (newStatus === 'DONE') {
+                      updated.completedCount = updated.completedCount + 1;
+                    }
+                    return updated;
+                  });
+                  // Nếu vé đã không phải WAITING, tự động xép hàng
+                  if (newStatus !== 'WAITING') {
+                     toast.info(`Vé ${eventData.ticketNo || ticketId} chuyển sang trạng thái: ${newStatus}`);
+                  }
                } else {
-                  console.log(`[SOCKET_EVENT_REFRESH] Gọi lại fetchQueue vì không nhận ra action NEW_TICKET`);
+                  console.log(`[SOCKET_EVENT_REFRESH] Gọi lại fetchQueue vì không nhận ra action`);
                   fetchQueue();
                }
              });
@@ -114,7 +189,7 @@ export default function CounterDashboardPage() {
           <CurrentServingCard />
         </motion.div>
         <motion.div variants={item} className="lg:col-span-5 relative">
-          <QuickStatsGrid />
+          <QuickStatsGrid sessionInfo={sessionInfo} />
         </motion.div>
       </div>
       <motion.div variants={item}>

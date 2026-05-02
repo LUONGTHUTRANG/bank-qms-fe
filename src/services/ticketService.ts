@@ -41,7 +41,16 @@ export interface QueueItemDto {
   segmentId?: number;
   segmentCode?: string;
   segmentName?: string;
+  status?: string; // WAITING, CALLED, SERVING, etc.
   // Các field khác từ response có thể có
+}
+
+export interface SessionInfoDto {
+  counterId: number;
+  userId: number;
+  waitingCount: number;
+  completedCount: number;
+  sessionDurationSeconds: number;
 }
 
 export const ticketService = {
@@ -64,9 +73,14 @@ export const ticketService = {
     return res?.data || res;  },
 
   updateTicketStatus: async (id: number, status: string): Promise<TicketDto> => {
-    const res = await axiosClient.put(`/v1/ticket/tickets/${id}/status`, JSON.stringify(status), {
+    const res = await axiosClient.put(`/v1/ticket/tickets/${id}/status`, { status }, {
       headers: { 'Content-Type': 'application/json' }
     });
+    return res?.data || res;
+  },
+
+  getSessionInfo: async (): Promise<SessionInfoDto> => {
+    const res = await axiosClient.get('/v1/ticket/tickets/session-info');
     return res?.data || res;
   }
 };

@@ -10,6 +10,7 @@ interface QueueState {
   
   fetchQueue: () => Promise<void>;
   addTicketToQueue: (newTicket: any) => void;
+  updateTicketStatusInQueue: (ticketId: number, newStatus: string) => void;
   callNextTicket: () => Promise<TicketDto | null>;
   fetchCurrentTicket: () => Promise<TicketDto | null>;
   updateCurrentTicketStatus: (status: string) => Promise<TicketDto | null>;
@@ -55,7 +56,8 @@ export const useQueueStore = create<QueueState>((set, get) => ({
         requestGroupName: newTicket.requestGroupName,
         segmentId: newTicket.segmentId,
         segmentCode: newTicket.segmentCode,
-        segmentName: newTicket.segmentName
+        segmentName: newTicket.segmentName,
+        status: newTicket.status || 'WAITING'
       };
       
       const newQueue = [...state.queueTickets, queueItem];
@@ -63,6 +65,17 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       newQueue.sort((a, b) => (b.score || 0) - (a.score || 0));
       
       return { queueTickets: newQueue };
+    });
+  },
+
+  updateTicketStatusInQueue: (ticketId: number, newStatus: string) => {
+    set((state) => {
+      const updatedQueue = state.queueTickets.map(ticket =>
+        ticket.ticketId === ticketId ? { ...ticket, status: newStatus } : ticket
+      );
+      // Nếu status không phải WAITING, thể xoá khỏi danh sách hàng đợi
+      const filteredQueue = updatedQueue.filter(ticket => ticket.status === 'WAITING');
+      return { queueTickets: filteredQueue };
     });
   },
 

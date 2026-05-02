@@ -44,8 +44,13 @@ export default function CounterLoginPage() {
       // Chỉ hiển thị toast lỗi đăng nhập nếu đó là lỗi do server trả về.
       // Nếu không có response (ví dụ: máy chủ sập, mất mạng), axiosClient interceptor đã tự hiện toast "Mất kết nối".
       if (error.response) {
-        const message = error.response.data?.message || 'Tài khoản hoặc mật khẩu không chính xác.';
+        // Cho login error, luôn hiển thị message tiếng Việt cố định (không dùng message từ server)
+        const message = 'Tài khoản hoặc mật khẩu không chính xác.';
+        
         toast.error(message, 'Đăng nhập thất bại');
+        console.error('Login error:', error.response.data);
+      } else {
+        console.error('Login error:', error);
       }
     } finally {
       setIsLoading(false);
