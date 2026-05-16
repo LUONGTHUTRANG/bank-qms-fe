@@ -9,9 +9,30 @@ export interface ServiceCounterDto {
   isActive: boolean;
 }
 
+export interface ServiceCounterWithTicketDto {
+  id: number;
+  branchId: number;
+  code: string;
+  name: string;
+  status: string;
+  isActive: boolean;
+  requestGroupIds: number[];
+  customerSegmentIds: number[];
+  currentTicketId?: number;
+  currentTicketNo?: string;
+  currentTicketStatus?: string;
+}
+
 export const counterService = {
   getServiceCountersByBranch: async (branchId: number) => {
     const res = await axiosClient.get(`${API_ENDPOINTS.MANAGEMENT.SERVICE_COUNTERS_BY_BRANCH}/${branchId}`);
     return res;
+  },
+
+  getServiceCountersWithTickets: async (branchId: number) => {
+    const res = await axiosClient.get(
+      `${API_ENDPOINTS.MANAGEMENT.SERVICE_COUNTERS_BY_BRANCH}/${branchId}/with-tickets`
+    );
+    return res.data;
   },
 };

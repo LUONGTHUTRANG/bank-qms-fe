@@ -56,9 +56,9 @@ const renderTicketRow = (ticket: TicketItem, idx: number, tabType: TicketTabType
   return (
     <div key={ticket.ticketId || idx} className={`grid grid-cols-4 px-6 py-4 items-center transition-colors ${isVIP ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-slate-50'}`}>
       <div className="flex items-center gap-3">
-        <span className={`text-base md:text-lg font-black ${config.numberColor} uppercase`}>{ticket.ticketNo}</span>
+        <span className={`text-base md:text-lg font-bold ${config.numberColor} uppercase`}>{ticket.ticketNo}</span>
         {isVIP ? (
-          <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-[2px] rounded text-[8px] md:text-[9px] font-black uppercase tracking-wider">VIP</span>
+          <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-[2px] rounded text-[8px] md:text-[9px] font-bold uppercase tracking-wider">VIP</span>
         ) : (
           <span className={`w-1.5 h-1.5 ${config.dotColor} rounded-full`}></span>
         )}
@@ -213,7 +213,7 @@ export default function QueueListSection() {
       <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden w-full">
         <div className="overflow-x-auto overflow-y-hidden w-full">
           <div className="min-w-[600px]">
-            <div className="grid grid-cols-4 px-6 py-4 border-b border-slate-100 text-[10px] md:text-[11px] font-black uppercase tracking-[0.15em] text-slate-400">
+            <div className="grid grid-cols-4 px-6 py-4 border-b border-slate-100 text-[10px] md:text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400">
               <span>Số thứ tự</span>
               <span>Loại dịch vụ</span>
               <span>Thời gian chờ</span>

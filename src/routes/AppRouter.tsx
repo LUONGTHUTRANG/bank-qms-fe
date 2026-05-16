@@ -7,6 +7,7 @@ import KioskPrintingPage from '@/pages/kiosk/KioskPrintingPage';
 import CounterLayout from '@/features/counter/layouts/CounterLayout';
 import CounterDashboardPage from '@/pages/counter/CounterDashboardPage';
 import CounterLoginPage from '@/pages/counter/CounterLoginPage';
+import DisplayPage from '@/pages/display/DisplayPage';
 import ProtectedRoute from './ProtectedRoute';
 
 // Các page khác sẽ import ở đây
@@ -48,7 +49,7 @@ export default function AppRouter() {
 
         {/* DISPLAY ROUTES (TV) */}
         <Route path="/display">
-          <Route index element={<div>TV Display</div>} />
+          <Route index element={<DisplayPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -25,6 +25,7 @@ export interface TicketDto {
   waitCreditSeconds: number;
   callAttemptCount: number;
   currentCounterId: number;
+  currentCounterCode: string;
   lastCalledAt: string;
   servingAt: string;
   doneAt: string;
@@ -126,5 +127,17 @@ export const ticketService = {
       headers: { 'Content-Type': 'application/json' }
     });
     return res?.data || res;
+  },
+
+  getTicketsByStatus: async (status: string): Promise<TicketDto[]> => {
+    const res = await axiosClient.post('/v1/ticket/tickets/list-by-status', { status }, {
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (Array.isArray(res?.data)) {
+      return res.data;
+    } else if (Array.isArray(res?.data?.data)) {
+      return res.data.data;
+    }
+    return res?.data || res || [];
   }
 };

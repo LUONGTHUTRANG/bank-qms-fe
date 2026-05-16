@@ -131,7 +131,7 @@ export default function KioskSelectCustomerTypePage() {
                     <span className={`material-symbols-outlined ${iconColor} text-2xl lg:text-4xl`} style={isVIP ? { fontVariationSettings: "'FILL' 1" } : {}}>{iconName}</span>
                   </div>
                   <div className="flex-grow text-center w-full relative z-10">
-                    <h2 className={`text-xl lg:text-2xl font-black ${titleColor} mb-2 lg:mb-3 tracking-tight`}>{segment.name}</h2>
+                    <h2 className={`text-xl lg:text-2xl font-bold ${titleColor} mb-2 lg:mb-3 tracking-tight`}>{segment.name}</h2>
                     <p className={`${descColor} text-sm lg:text-base font-medium leading-relaxed max-xl:line-clamp-3`}>{segment.description || segment.name}</p>
                   </div>
                   <div className={`mt-4 lg:mt-6 w-full py-3 lg:py-4 px-4 rounded-full bg-white border ${buttonBorderColor} ${buttonGroupHover} transition-all duration-300 flex items-center justify-center gap-2 relative z-10 w-[95%] mx-auto`}>

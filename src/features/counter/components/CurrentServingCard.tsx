@@ -198,7 +198,7 @@ export default function CurrentServingCard() {
               )}
             </h2>
             <div className="flex items-baseline gap-6 mt-2">
-              <h1 className={`text-5xl font-black tracking-tight transition-colors duration-300 
+              <h1 className={`text-5xl font-bold tracking-tight transition-colors duration-300 
                 ${servingState === 'idle' ? 'text-slate-300' : 'text-[#003063]'}`}>
                 {servingState === 'idle' ? '----' : currentTicket ? currentTicket.ticketNo : '----'}
               </h1>
@@ -226,7 +226,7 @@ export default function CurrentServingCard() {
                     servingState === 'completed' ? 'text-slate-500' : 'text-slate-500/70'}`}>
                   {servingState === 'calling' ? 'TG Chờ khách' : 'Thời gian phục vụ'}
                 </span>
-                <span className={`text-lg font-black tabular-nums leading-none mt-0.5 
+                <span className={`text-lg font-bold tabular-nums leading-none mt-0.5 
                   ${servingState === 'serving' ? 'text-green-700' : 
                     servingState === 'completed' ? 'text-slate-400' : 'text-slate-600'}`}>
                   {formatTime(elapsedTime)}
