@@ -1,22 +1,30 @@
 import { create } from 'zustand';
-import { ticketService, type QueueItemDto, type TicketDto } from '@/services/ticketService';
+import { ticketService, type QueueItemDto, type TicketDto, type TicketStatusUpdateRequest, type SuspendedTicketDto } from '@/services/ticketService';
 import { toast } from '@/stores/useToastStore';
 
 interface QueueState {
   queueTickets: QueueItemDto[];
   isLoadingQueue: boolean;
+  suspendedTickets: SuspendedTicketDto[];
+  isLoadingSuspended: boolean;
   currentTicket: TicketDto | null;
   isCalling: boolean;
   
   fetchQueue: () => Promise<void>;
   addTicketToQueue: (newTicket: any) => void;
   updateTicketStatusInQueue: (ticketId: number, newStatus: string) => void;
+  fetchSuspendedTickets: () => Promise<void>;
+  addSuspendedTicket: (ticket: any) => void;
+  removeSuspendedTicket: (ticketId: number) => void;
   callNextTicket: () => Promise<TicketDto | null>;
   fetchCurrentTicket: () => Promise<TicketDto | null>;
   updateCurrentTicketStatus: (status: string) => Promise<TicketDto | null>;
+  updateCurrentTicketStatusWithReason: (request: TicketStatusUpdateRequest) => Promise<TicketDto | null>;
 }
 
 export const useQueueStore = create<QueueState>((set, get) => ({
+  suspendedTickets: [],
+  isLoadingSuspended: false,
   queueTickets: [],
   isLoadingQueue: false,
   currentTicket: null,
@@ -46,6 +54,11 @@ export const useQueueStore = create<QueueState>((set, get) => ({
     set((state) => {
       const exists = state.queueTickets.find(t => t.ticketId === newTicket.ticketId);
       if (exists) return state; // Avoid duplicate
+      
+      // Không thêm vé với status SKIPPED_HOLD vào queue
+      if (newTicket.status === 'SKIPPED_HOLD') {
+        return state; // Ticket này sẽ được xử lý bởi addSuspendedTicket
+      }
 
       // Create a compatible object from event data
       const queueItem: QueueItemDto = {
@@ -70,13 +83,31 @@ export const useQueueStore = create<QueueState>((set, get) => ({
 
   updateTicketStatusInQueue: (ticketId: number, newStatus: string) => {
     set((state) => {
-      const updatedQueue = state.queueTickets.map(ticket =>
-        ticket.ticketId === ticketId ? { ...ticket, status: newStatus } : ticket
+      // Chỉ xoá vé có ticketId tương ứng khỏi queue, không xoá các vé khác
+      // Nếu newStatus không phải WAITING, vé này sẽ được xoá
+      const filteredQueue = state.queueTickets.filter(ticket => 
+        ticket.ticketId !== ticketId
       );
-      // Nếu status không phải WAITING, thể xoá khỏi danh sách hàng đợi
-      const filteredQueue = updatedQueue.filter(ticket => ticket.status === 'WAITING');
       return { queueTickets: filteredQueue };
     });
+  },
+
+  fetchSuspendedTickets: async () => {
+    set({ isLoadingSuspended: true });
+    try {
+      const data = await ticketService.getSuspendedTickets();
+      if (Array.isArray(data)) {
+        set({ suspendedTickets: data });
+      } else {
+        set({ suspendedTickets: [] });
+      }
+    } catch (error) {
+      console.error('Error fetching suspended tickets', error);
+      toast.error('Lỗi khi tải danh sách vé tạm hoãn');
+      set({ suspendedTickets: [] });
+    } finally {
+      set({ isLoadingSuspended: false });
+    }
   },
 
   callNextTicket: async () => {
@@ -131,8 +162,61 @@ export const useQueueStore = create<QueueState>((set, get) => ({
       return updatedTicket;
     } catch (error: any) {
       console.error('Error updating ticket status:', error);
-      toast.error('Lỗi khi cập nhật trạng thái vé. Vui lòng thử lại.');
+      const errorMsg = error?.response?.data?.message || error?.message || 'Lỗi khi cập nhật trạng thái vé. Vui lòng thử lại.';
+      toast.error(errorMsg);
       return null;
     }
-  }
-}));
+  },
+
+  updateCurrentTicketStatusWithReason: async (request: TicketStatusUpdateRequest) => {
+    const { currentTicket } = get();
+    if (!currentTicket) return null;
+
+    try {
+      const updatedTicket = await ticketService.updateTicketStatusWithReason(currentTicket.id, request);
+      set({ currentTicket: updatedTicket });
+      toast.success(`Đã cập nhật trạng thái phiếu thành: ${request.status}`);
+      return updatedTicket;
+    } catch (error: any) {
+      console.error('Error updating ticket status with reason:', error);
+      const errorMsg = error?.response?.data?.message || error?.message || 'Lỗi khi cập nhật trạng thái vé. Vui lòng thử lại.';
+      toast.error(errorMsg);
+      return null;
+    }
+  },
+
+  addSuspendedTicket: (ticket) => {
+    set((state) => {
+      // Kiểm tra vé đã tồn tại chưa
+      const exists = state.suspendedTickets.find(t => t.ticketId === ticket.ticketId);
+      if (exists) return state; // Avoid duplicate
+
+      // Tạo SuspendedTicketDto từ event data
+      const suspendedTicket: SuspendedTicketDto = {
+        ticketId: ticket.ticketId,
+        ticketNo: ticket.ticketNo,
+        score: ticket.score || 0,
+        requestGroupId: ticket.requestGroupId,
+        requestGroupName: ticket.requestGroupName,
+        segmentId: ticket.segmentId,
+        segmentCode: ticket.segmentCode,
+        segmentName: ticket.segmentName,
+        skipExpireAt: ticket.skipExpireAt || new Date().toISOString(),
+        rejoinCount: ticket.rejoinCount || 0
+      };
+
+      const newSuspended = [...state.suspendedTickets, suspendedTicket];
+      // Sắp xếp theo score (cao hơn xếp trước)
+      newSuspended.sort((a, b) => (b.score || 0) - (a.score || 0));
+
+      return { suspendedTickets: newSuspended };
+    });
+  },
+
+  removeSuspendedTicket: (ticketId: number) => {
+    set((state) => {
+      const filteredSuspended = state.suspendedTickets.filter(ticket => ticket.ticketId !== ticketId);
+      return { suspendedTickets: filteredSuspended };
+    });
+  } }
+));

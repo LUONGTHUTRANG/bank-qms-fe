@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TransferCounterModal from './TransferCounterModal';
+import SkipReasonModal from './SkipReasonModal';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useQueueStore } from '@/stores/useQueueStore';
+import type { TicketStatusUpdateRequest } from '@/services/ticketService';
 import { kioskService } from '@/services/kioskService';
 
 export default function CurrentServingCard() {
   const [servingState, setServingState] = useState<'idle' | 'calling' | 'serving' | 'completed'>('idle');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showSkipReasonModal, setShowSkipReasonModal] = useState(false);
+  const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
+  const [isCanceling, setIsCanceling] = useState(false);
 
-  const { currentTicket, callNextTicket, isCalling, fetchCurrentTicket, updateCurrentTicketStatus } = useQueueStore();
+  const { currentTicket, callNextTicket, isCalling, fetchCurrentTicket, updateCurrentTicketStatus, updateCurrentTicketStatusWithReason } = useQueueStore();
 
   // Load current active ticket on mount
   useEffect(() => {
@@ -101,7 +107,31 @@ export default function CurrentServingCard() {
   };
 
   const handleEndService = () => {
-    setServingState('completed');
+    setShowSkipReasonModal(true);
+  };
+
+  const handleSkipWithReason = async (reasonId: number, reasonName: string) => {
+    if (!currentTicket) {
+      console.error('No current ticket available');
+      return;
+    }
+
+    try {
+      const request: TicketStatusUpdateRequest = {
+        status: 'SKIPPED_HOLD',
+        reasonId,
+        reason: reasonName
+      };
+
+      const updated = await updateCurrentTicketStatusWithReason(request);
+      if (updated) {
+        setServingState('completed');
+      }
+    } catch (error) {
+      console.error('Error skipping ticket:', error);
+    } finally {
+      setShowSkipReasonModal(false);
+    }
   };
 
   const handleTransferServiceGroup = async (serviceGroupId: string, reasonId: number) => {
@@ -120,6 +150,23 @@ export default function CurrentServingCard() {
       setServingState('completed');
     } catch (error) {
       console.error('Error transferring ticket:', error);
+    }
+  };
+
+  const handleCancelTransaction = () => {
+    setShowCancelConfirmModal(true);
+  };
+
+  const handleConfirmCancel = async () => {
+    try {
+      setIsCanceling(true);
+      await updateCurrentTicketStatus('CANCELLED');
+      setShowCancelConfirmModal(false);
+      setServingState('completed');
+    } catch (error) {
+      console.error('Error cancelling ticket:', error);
+    } finally {
+      setIsCanceling(false);
     }
   };
 
@@ -192,7 +239,7 @@ export default function CurrentServingCard() {
         <div className="space-y-4 relative z-10 flex-1 flex flex-col justify-end">
           {/* Actions when Calling */}
           {servingState === 'calling' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-3 gap-4">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-4 gap-4">
               <button 
                 onClick={handleConfirmService}
                 className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#10B981] text-white rounded-xl shadow-[0_4px_14px_rgba(16,185,129,0.3)] border border-[#059669] hover:bg-[#059669] hover:-translate-y-0.5 active:translate-y-0 transition-all group"
@@ -213,12 +260,18 @@ export default function CurrentServingCard() {
                 <span className="material-symbols-outlined text-[28px] group-hover:scale-95 transition-transform">person_off</span>
                 <span className="text-[13px] font-extrabold uppercase tracking-tight">Không đến (Bỏ qua)</span>
               </button>
+
+              <button 
+                onClick={handleCancelTransaction}
+                className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#FEE2E2] text-[#DC2626] rounded-xl border border-[#FCA5A5] hover:bg-[#FCA5A5] hover:border-[#F87171] transition-all group"
+              >
+                <span className="material-symbols-outlined text-[20px]">cancel</span>
+                <span className="text-[13px] font-extrabold uppercase tracking-tight">Hủy giao dịch</span>
+              </button>
             </motion.div>
           )}
-
-          {/* Actions when Serving or Completed */}
           {(servingState === 'serving' || servingState === 'completed') && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid md:grid-cols-3 gap-3">
               <button 
                 onClick={servingState === 'serving' ? handleCompleteService : undefined} 
                 disabled={servingState === 'completed'}
@@ -241,7 +294,7 @@ export default function CurrentServingCard() {
                 <span className="material-symbols-outlined text-[20px]">swap_horiz</span>
                 <span className="text-[11px] font-bold uppercase tracking-tight">Chuyển quầy</span>
               </button>
-              <button 
+              {/* <button 
                 disabled={servingState === 'completed'}
                 className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-xl transition-all
                   ${servingState === 'serving' 
@@ -250,7 +303,7 @@ export default function CurrentServingCard() {
               >
                 <span className="material-symbols-outlined text-[20px]">pause_circle</span>
                 <span className="text-[11px] font-bold uppercase tracking-tight">Tạm dừng</span>
-              </button>
+              </button> */}
               <button 
                 onClick={servingState === 'serving' ? handleEndService : undefined} 
                 disabled={servingState === 'completed'}
@@ -260,7 +313,7 @@ export default function CurrentServingCard() {
                     : 'cursor-not-allowed bg-slate-50 text-slate-400 border-slate-200 opacity-60 grayscale'}`}
               >
                 <span className="material-symbols-outlined text-[20px]">cancel</span>
-                <span className="text-[11px] font-bold uppercase tracking-tight">Hủy GD</span>
+                <span className="text-[11px] font-bold uppercase tracking-tight">Hủy giao dịch</span>
               </button>
             </motion.div>
           )}
@@ -339,6 +392,26 @@ export default function CurrentServingCard() {
         isOpen={showTransferModal}
         onClose={() => setShowTransferModal(false)}
         onConfirm={handleTransferServiceGroup}
+      />
+
+      {/* Skip Reason Modal */}
+      <SkipReasonModal 
+        isOpen={showSkipReasonModal}
+        onClose={() => setShowSkipReasonModal(false)}
+        onConfirm={handleSkipWithReason}
+      />
+
+      {/* Cancel Transaction Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={showCancelConfirmModal}
+        onClose={() => setShowCancelConfirmModal(false)}
+        onConfirm={handleConfirmCancel}
+        title="Xác nhận hủy giao dịch"
+        message={`Bạn có chắc chắn muốn hủy giao dịch cho vé #${currentTicket?.ticketNo || '---'}?`}
+        confirmText="Hủy giao dịch"
+        cancelText="Đóng"
+        variant="danger"
+        isLoading={isCanceling}
       />
     </>
   );

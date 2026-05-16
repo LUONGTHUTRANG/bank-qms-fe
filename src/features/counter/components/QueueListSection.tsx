@@ -1,13 +1,148 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQueueStore } from '@/stores/useQueueStore';
+import { ticketService } from '@/services/ticketService';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import type { QueueItemDto, SuspendedTicketDto } from '@/services/ticketService';
+
+type TabType = 'queue' | 'postponed' | 'cancelled';
+type TicketTabType = 'queue' | 'postponed';
+type TicketItem = QueueItemDto | SuspendedTicketDto;
+
+interface TabConfig {
+  numberColor: string;
+  dotColor: string;
+  actionButtonColor: string;
+  actionButtonBg: string;
+  timeIcon: string;
+  getTimeLabel: (ticket: TicketItem) => string;
+  buttons: Array<{ icon: string; title: string; color: string; bg: string }>;
+}
+
+const tabConfigs: Record<TicketTabType, TabConfig> = {
+  queue: {
+    numberColor: 'text-[#003063]',
+    dotColor: 'bg-blue-500',
+    actionButtonColor: 'text-[#003063]',
+    actionButtonBg: 'hover:bg-blue-50',
+    timeIcon: 'avg_time',
+    getTimeLabel: () => 'Vừa xong',
+    buttons: [
+      { icon: 'campaign', title: 'Gọi số', color: 'text-[#003063]', bg: 'hover:bg-blue-50' },
+      { icon: 'more_time', title: 'Tạm hoãn', color: 'text-slate-500', bg: 'hover:bg-slate-100' },
+      { icon: 'close', title: 'Hủy bỏ', color: 'text-red-500', bg: 'hover:bg-red-50' }
+    ]
+  },
+  postponed: {
+    numberColor: 'text-amber-600',
+    dotColor: 'bg-amber-500',
+    actionButtonColor: 'text-amber-600',
+    actionButtonBg: 'hover:bg-amber-50',
+    timeIcon: 'schedule',
+    getTimeLabel: (ticket) => {
+      const suspendedTicket = ticket as SuspendedTicketDto;
+      return suspendedTicket.skipExpireAt ? new Date(suspendedTicket.skipExpireAt).toLocaleTimeString('vi-VN') : '--:--';
+    },
+    buttons: [
+      { icon: 'undo', title: 'Tham gia lại', color: 'text-amber-600', bg: 'hover:bg-amber-50' }
+    ]
+  }
+};
+
+const renderTicketRow = (ticket: TicketItem, idx: number, tabType: TicketTabType, onRejoin?: (ticketId: number) => void) => {
+  const config = tabConfigs[tabType];
+  const isVIP = ticket.segmentCode === 'VIP';
+
+  return (
+    <div key={ticket.ticketId || idx} className={`grid grid-cols-4 px-6 py-4 items-center transition-colors ${isVIP ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-slate-50'}`}>
+      <div className="flex items-center gap-3">
+        <span className={`text-base md:text-lg font-black ${config.numberColor} uppercase`}>{ticket.ticketNo}</span>
+        {isVIP ? (
+          <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-[2px] rounded text-[8px] md:text-[9px] font-black uppercase tracking-wider">VIP</span>
+        ) : (
+          <span className={`w-1.5 h-1.5 ${config.dotColor} rounded-full`}></span>
+        )}
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[#191c20] font-semibold text-xs md:text-sm">
+          {ticket.requestGroupName || `Loại DS ${ticket.requestGroupId}`}
+        </span>
+        {ticket.segmentName && (
+          <span className="text-slate-500 text-[10px] md:text-[11px] font-medium">
+            {ticket.segmentName}
+          </span>
+        )}
+      </div>
+      <div className={`flex items-center gap-2 ${tabType === 'queue' ? 'text-slate-500' : 'text-amber-600'}`}>
+        <span className="material-symbols-outlined text-[15px] md:text-[17px]">{config.timeIcon}</span>
+        <span className="font-medium text-[12px] md:text-[13px]">
+          {config.getTimeLabel(ticket)}
+        </span>
+      </div>
+      <div className="flex justify-end gap-1 md:gap-2">
+        {config.buttons.map((btn: { icon: string; title: string; color: string; bg: string }, btnIdx: number) => (
+          <button 
+            key={btnIdx}
+            className={`cursor-pointer p-1.5 md:p-2 ${btn.color} ${btn.bg} rounded-full transition-colors flex items-center justify-center`} 
+            title={btn.title}
+            onClick={() => tabType === 'postponed' && onRejoin && onRejoin(ticket.ticketId)}
+          >
+            <span className="material-symbols-outlined text-[18px] md:text-[20px]">{btn.icon}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 export default function QueueListSection() {
-  const [activeTab, setActiveTab] = useState<'queue' | 'postponed' | 'cancelled'>('queue');
+  const [activeTab, setActiveTab] = useState<TabType>('queue');
   const [currentPage, setCurrentPage] = useState(1);
+  const [rejoinLoading, setRejoinLoading] = useState<number | null>(null);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [ticketToRejoin, setTicketToRejoin] = useState<number | null>(null);
+  const [isErrorOpen, setIsErrorOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>('');
   const itemsPerPage = 8;
   
-  const { queueTickets, isLoadingQueue } = useQueueStore();
+  const { queueTickets, isLoadingQueue, suspendedTickets, isLoadingSuspended, fetchSuspendedTickets } = useQueueStore();
+
+  const handleRejoin = (ticketId: number) => {
+    setTicketToRejoin(ticketId);
+    setIsConfirmOpen(true);
+  };
+
+  const handleConfirmRejoin = async () => {
+    if (ticketToRejoin === null) return;
+    
+    try {
+      setRejoinLoading(ticketToRejoin);
+      await ticketService.rejoinTicket(ticketToRejoin);
+      // Refresh the suspended tickets list
+      await fetchSuspendedTickets();
+      setIsConfirmOpen(false);
+      setTicketToRejoin(null);
+    } catch (error: any) {
+      console.error('Error rejoining ticket:', error);
+      const errorMsg = error?.response?.data?.message || error?.message || 'Có lỗi xảy ra khi tham gia lại';
+      setErrorMessage(errorMsg);
+      setIsErrorOpen(true);
+      setIsConfirmOpen(false);
+    } finally {
+      setRejoinLoading(null);
+    }
+  };
+
+  const handleCloseConfirm = () => {
+    setIsConfirmOpen(false);
+    setTicketToRejoin(null);
+  };
+
+  const handleCloseError = () => {
+    setIsErrorOpen(false);
+    setErrorMessage('');
+    setTicketToRejoin(null);
+  };
 
   // Lọc chỉ hiển thị tickets có status WAITING trong tab "Hàng đợi"
   const waitingTickets = queueTickets.filter(ticket => ticket.status === 'WAITING' || !ticket.status);
@@ -15,13 +150,17 @@ export default function QueueListSection() {
   // Temporary calculate count mapping
   const counts = {
     queue: waitingTickets.length,
-    postponed: 0,
+    postponed: suspendedTickets.length,
     cancelled: 0
   };
 
   // Pagination logic
   const totalPages = Math.ceil(waitingTickets.length / itemsPerPage);
   const paginatedQueue = waitingTickets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  // Pagination logic for suspended tickets
+  const totalSuspendedPages = Math.ceil(suspendedTickets.length / itemsPerPage);
+  const paginatedSuspended = suspendedTickets.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   return (
     <section className="space-y-4">
@@ -83,78 +222,35 @@ export default function QueueListSection() {
             
             {/* Tab content wrapper with AnimatePresence */}
             <AnimatePresence mode="wait">
-              {activeTab === 'queue' && (
+              {(activeTab === 'queue' || activeTab === 'postponed') && (
                 <motion.div 
-                  key="queue-list"
+                  key={`${activeTab}-list`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.2 }}
                   className="divide-y divide-slate-50"
                 >
-                  {isLoadingQueue ? (
-                    <div className="py-8 text-center text-slate-400 font-medium">
-                       Đang tải dữ liệu hàng đợi...
-                    </div>
-                  ) : waitingTickets.length === 0 ? (
-                     <div className="py-8 text-center text-slate-400 font-medium">
-                       Chưa có khách chờ trong hàng đợi.
-                     </div>
+                  {activeTab === 'queue' ? (
+                    isLoadingQueue ? (
+                      <div className="py-8 text-center text-slate-400 font-medium">Đang tải dữ liệu hàng đợi...</div>
+                    ) : waitingTickets.length === 0 ? (
+                      <div className="py-8 text-center text-slate-400 font-medium">Chưa có khách chờ trong hàng đợi.</div>
+                    ) : (
+                      paginatedQueue.map((ticket, idx) => renderTicketRow(ticket, idx, 'queue', handleRejoin))
+                    )
                   ) : (
-                    paginatedQueue.map((ticket, idx) => (
-                      <div key={ticket.ticketId || idx} className={`grid grid-cols-4 px-6 py-4 items-center transition-colors ${ticket.segmentCode === 'VIP' ? 'bg-amber-50/30 hover:bg-amber-50/60' : 'hover:bg-slate-50'}`}>
-                        <div className="flex items-center gap-3">
-                          <span className="text-base md:text-lg font-black text-[#003063] uppercase">{ticket.ticketNo}</span>
-                          {ticket.segmentCode === 'VIP' ? (
-                            <span className="flex items-center gap-1 bg-amber-100 text-amber-700 px-1.5 py-[2px] rounded text-[8px] md:text-[9px] font-black uppercase tracking-wider">VIP</span>
-                          ) : (
-                             <span className="w-1.5 h-1.5 bg-blue-500 rounded-full"></span>
-                          )}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-[#191c20] font-semibold text-xs md:text-sm">
-                            {ticket.requestGroupName || `Loại DS ${ticket.requestGroupId}`}
-                          </span>
-                          {ticket.segmentName && (
-                            <span className="text-slate-500 text-[10px] md:text-[11px] font-medium">
-                              {ticket.segmentName}
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2 text-slate-500">
-                          <span className="material-symbols-outlined text-[15px] md:text-[17px]">avg_time</span>
-                          <span className="font-medium text-[12px] md:text-[13px]">
-                             Vừa xong
-                          </span>
-                        </div>
-                        <div className="flex justify-end gap-1 md:gap-2">
-                          <button className="cursor-pointer p-1.5 md:p-2 text-[#003063] hover:bg-blue-50 rounded-full transition-colors flex items-center justify-center" title="Gọi số">
-                            <span className="material-symbols-outlined text-[18px] md:text-[20px]">campaign</span>
-                          </button>
-                          <button className="cursor-pointer p-1.5 md:p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center" title="Tạm hoãn">
-                            <span className="material-symbols-outlined text-[18px] md:text-[20px]">more_time</span>
-                          </button>
-                          <button className="cursor-pointer p-1.5 md:p-2 text-red-500 hover:bg-red-50 rounded-full transition-colors flex items-center justify-center" title="Hủy bỏ">
-                            <span className="material-symbols-outlined text-[18px] md:text-[20px]">close</span>
-                          </button>
-                        </div>
+                    isLoadingSuspended ? (
+                      <div className="py-8 text-center text-slate-400 font-medium">Đang tải dữ liệu vé tạm hoãn...</div>
+                    ) : suspendedTickets.length === 0 ? (
+                      <div className="py-16 flex flex-col items-center justify-center text-amber-500/60">
+                        <span className="material-symbols-outlined text-4xl mb-3">hourglass_empty</span>
+                        <p className="text-sm font-medium text-amber-600/70">Chưa có giao dịch tạm hoãn.</p>
                       </div>
-                    ))
+                    ) : (
+                      paginatedSuspended.map((ticket, idx) => renderTicketRow(ticket, idx, 'postponed', handleRejoin))
+                    )
                   )}
-                </motion.div>
-              )}
-
-              {activeTab === 'postponed' && (
-                <motion.div 
-                  key="postponed-list"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.2 }}
-                  className="py-16 flex flex-col items-center justify-center text-amber-500/60"
-                >
-                  <span className="material-symbols-outlined text-4xl mb-3">hourglass_empty</span>
-                  <p className="text-sm font-medium text-amber-600/70">Chưa có giao dịch tạm hoãn.</p>
                 </motion.div>
               )}
 
@@ -218,7 +314,73 @@ export default function QueueListSection() {
             </div>
           </div>
         )}
+
+        {/* Pagination Controls for Postponed */}
+        {activeTab === 'postponed' && totalSuspendedPages > 1 && (
+          <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-sm">
+            <span className="text-slate-500">
+              Hiển thị <span className="font-semibold text-slate-700">{(currentPage - 1) * itemsPerPage + 1}</span> đến <span className="font-semibold text-slate-700">{Math.min(currentPage * itemsPerPage, suspendedTickets.length)}</span> trong tổng số <span className="font-semibold text-slate-700">{suspendedTickets.length}</span> vé
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Trang trước"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalSuspendedPages }).map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`w-8 h-8 rounded-lg text-sm font-semibold transition-colors ${
+                      currentPage === i + 1
+                        ? 'bg-amber-600 text-white'
+                        : 'border border-slate-200 text-slate-600 hover:border-amber-300 hover:text-amber-600'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalSuspendedPages, p + 1))}
+                disabled={currentPage === totalSuspendedPages}
+                className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Trang sau"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
-    </section>
+
+      {/* Confirm Rejoin Dialog */}
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        onClose={handleCloseConfirm}
+        onConfirm={handleConfirmRejoin}
+        title="Xác nhận tham gia lại"
+        message={`Bạn có chắc chắn muốn cho phép vé ${suspendedTickets.find(t => t.ticketId === ticketToRejoin)?.ticketNo || ''} tham gia lại hàng đợi?`}
+        confirmText="Đồng ý"
+        cancelText="Hủy"
+        variant="info"
+        isLoading={rejoinLoading === ticketToRejoin}
+      />
+      {/* Error Dialog */}
+      <ConfirmDialog
+        isOpen={isErrorOpen}
+        onClose={handleCloseError}
+        onConfirm={handleCloseError}
+        title="Thất bại"
+        message={errorMessage}
+        confirmText="Đóng"
+        variant="danger"
+      />    </section>
   );
 }

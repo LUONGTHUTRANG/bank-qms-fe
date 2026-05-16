@@ -27,7 +27,7 @@ const item = {
 };
 
 export default function CounterDashboardPage() {
-  const { fetchQueue, addTicketToQueue, updateTicketStatusInQueue } = useQueueStore();
+  const { fetchQueue, fetchSuspendedTickets, addTicketToQueue, updateTicketStatusInQueue, addSuspendedTicket, removeSuspendedTicket } = useQueueStore();
   const [sessionInfo, setSessionInfo] = useState<SessionInfoDto | null>(null);
   const [servingTicketsCount, setServingTicketsCount] = useState(0);
 
@@ -70,8 +70,9 @@ export default function CounterDashboardPage() {
   }, [servingTicketsCount]);
 
   useEffect(() => {
-    // Load initial queue data
+    // Load initial queue data and suspended tickets
     fetchQueue();
+    fetchSuspendedTickets();
 
     let subscriptions: any[] = [];
     let isMounted = true;
@@ -106,16 +107,42 @@ export default function CounterDashboardPage() {
                
                console.log(`[SOCKET_EVENT_PARSED] Dữ liệu xử lý từ ${topic}:`, eventData);
 
-               if (eventData?.action === 'NEW_TICKET' || eventData?.ticketNo) {
+               if (eventData?.action === 'NEW_TICKET') {
                   toast.info(`Có vé mới: ${eventData.ticketNo} - Kênh: ${topic}`);
-                  addTicketToQueue(eventData);
-                  // Cập nhật session info: tăng waitingCount
-                  setSessionInfo(prev => prev ? { ...prev, waitingCount: prev.waitingCount + 1 } : prev);
+                  
+                  // Xử lý vé mới: nếu status = SKIPPED_HOLD, thêm vào suspended, không vào queue
+                  if (eventData.status === 'SKIPPED_HOLD') {
+                    console.log(`[TICKET_NEW_SUSPENDED] Vé ${eventData.ticketNo} được tạo với trạng thái tạm hoãn`);
+                    addSuspendedTicket(eventData);
+                  } else {
+                    addTicketToQueue(eventData);
+                    // Cập nhật session info: tăng waitingCount
+                    setSessionInfo(prev => prev ? { ...prev, waitingCount: prev.waitingCount + 1 } : prev);
+                  }
                } else if (eventData?.action === 'TICKET_STATUS_CHANGED') {
                   // Xử lý sự kiện thay đổi trạng thái vé
                   const { ticketId, newStatus, oldStatus } = eventData;
                   console.log(`[TICKET_STATUS_CHANGE] Vé ID: ${ticketId}, ${oldStatus} => ${newStatus}`);
                   updateTicketStatusInQueue(ticketId, newStatus);
+
+                  // Xử lý vé được tạm hoãn (SKIPPED_HOLD)
+                  if (newStatus === 'SKIPPED_HOLD') {
+                    console.log(`[TICKET_SUSPENDED] Vé ${eventData.ticketNo} đã được tạm hoãn`);
+                    addSuspendedTicket(eventData);
+                  }
+
+                  // Xử lý vé tham gia lại từ tạm hoãn (SKIPPED_HOLD -> WAITING)
+                  if (oldStatus === 'SKIPPED_HOLD' && newStatus === 'WAITING') {
+                    console.log(`[TICKET_REJOIN] Vé ${eventData.ticketNo} đã tham gia lại hàng đợi`);
+                    removeSuspendedTicket(ticketId);
+                    addTicketToQueue(eventData);
+                  }
+
+                  // Xử lý vé hết hạn tạm hoãn (SKIPPED_EXPIRED)
+                  if (newStatus === 'SKIPPED_EXPIRED') {
+                    console.log(`[TICKET_EXPIRED] Vé ${eventData.ticketNo} hết hạn tạm hoãn`);
+                    removeSuspendedTicket(ticketId);
+                  }
 
                   // Track serving tickets count for service time counter
                   const isOldServing = oldStatus === 'CALLED' || oldStatus === 'SERVING';
@@ -136,6 +163,10 @@ export default function CounterDashboardPage() {
                     // Nếu từ WAITING sang trạng thái khác, giảm waitingCount
                     if (oldStatus === 'WAITING' && newStatus !== 'WAITING') {
                       updated.waitingCount = Math.max(0, updated.waitingCount - 1);
+                    }
+                    // Nếu từ SKIPPED_HOLD sang WAITING, tăng waitingCount
+                    if (oldStatus === 'SKIPPED_HOLD' && newStatus === 'WAITING') {
+                      updated.waitingCount = updated.waitingCount + 1;
                     }
                     // Nếu sang DONE, tăng completedCount
                     if (newStatus === 'DONE') {
