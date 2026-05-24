@@ -8,6 +8,7 @@ import { appConfig } from '@/config/appConfig';
 import { toast } from '@/stores/useToastStore';
 import { useQueueStore } from '@/stores/useQueueStore';
 import { ticketService, type SessionInfoDto } from '@/services/ticketService';
+import { getTicketStatusName } from '@/constants/ticketStatus';
 
 // Container Variants for staggering animation
 const container = {
@@ -176,7 +177,8 @@ export default function CounterDashboardPage() {
                   });
                   // Nếu vé đã không phải WAITING, tự động xép hàng
                   if (newStatus !== 'WAITING') {
-                     toast.info(`Vé ${eventData.ticketNo || ticketId} chuyển sang trạng thái: ${newStatus}`);
+                     const statusName = getTicketStatusName(newStatus);
+                     toast.info(`Vé ${eventData.ticketNo || ticketId} chuyển sang trạng thái: ${statusName}`);
                   }
                } else {
                   console.log(`[SOCKET_EVENT_REFRESH] Gọi lại fetchQueue vì không nhận ra action`);

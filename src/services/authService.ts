@@ -46,5 +46,9 @@ export const authService = {
 
   getActiveCounterSession: async () => {
     return axiosClient.get<any, any>(API_ENDPOINTS.AUTH.COUNTER_SESSIONS.ACTIVE);
+  },
+
+  endCounterSession: async () => {
+    return axiosClient.post<any, any>(API_ENDPOINTS.AUTH.COUNTER_SESSIONS.END);
   }
 };

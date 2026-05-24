@@ -34,9 +34,9 @@ const variantStyles = {
     button: 'bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500',
   },
   info: {
-    icon: <Info className="w-6 h-6 text-blue-600" />,
+    icon: <Info className="w-6 h-6 text-blue-900" />,
     iconBg: 'bg-blue-100',
-    button: 'bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500',
+    button: 'bg-blue-900 hover:bg-blue-800 text-white focus:ring-blue-500',
   },
   success: {
     icon: <CheckCircle className="w-6 h-6 text-emerald-600" />,

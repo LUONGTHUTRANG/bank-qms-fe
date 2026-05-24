@@ -158,7 +158,7 @@ export const useQueueStore = create<QueueState>((set, get) => ({
     try {
       const updatedTicket = await ticketService.updateTicketStatus(currentTicket.id, status);
       set({ currentTicket: updatedTicket });
-      toast.success(`Đã cập nhật trạng thái phiếu thành: ${status}`);
+      // toast.success(`Đã cập nhật trạng thái phiếu thành: ${status}`);
       return updatedTicket;
     } catch (error: any) {
       console.error('Error updating ticket status:', error);
@@ -175,7 +175,7 @@ export const useQueueStore = create<QueueState>((set, get) => ({
     try {
       const updatedTicket = await ticketService.updateTicketStatusWithReason(currentTicket.id, request);
       set({ currentTicket: updatedTicket });
-      toast.success(`Đã cập nhật trạng thái phiếu thành: ${request.status}`);
+      // toast.success(`Đã cập nhật trạng thái phiếu thành: ${request.status}`);
       return updatedTicket;
     } catch (error: any) {
       console.error('Error updating ticket status with reason:', error);

@@ -15,7 +15,7 @@ export default function CounterGrid() {
   // Map API data to ICounterCard
   const mapCounterData = (data: ServiceCounterWithTicketDto[]): ICounterCard[] => {
     return data.map((counter) => {
-      let status: 'serving' | 'calling' | 'ready' | 'offline' | 'completed' | 'cancelled' = 'offline';
+      let status: 'serving' | 'calling' | 'ready' | 'offline' | 'completed' | 'cancelled' | 'skipped' = 'offline';
 
       if (counter.status === 'INACTIVE') {
         status = 'offline';
@@ -27,6 +27,8 @@ export default function CounterGrid() {
             status = 'completed';
           } else if (counter.currentTicketStatus === 'CANCELLED') {
             status = 'cancelled';
+          } else if (counter.currentTicketStatus === 'SKIPPED_HOLD' || counter.currentTicketStatus === 'SKIPPED') {
+            status = 'skipped';
           } else {
             status = 'serving';
           }
@@ -55,33 +57,48 @@ export default function CounterGrid() {
       setCounters(mappedCounters);
       setError(null);
       console.log(`📺 CounterGrid updated with ${mappedCounters.length} counters`);
+      return mappedCounters;
     } catch (err) {
       console.error('Error fetching counters:', err);
       setError('Không thể tải danh sách quầy');
-
-      // Fallback mock data
-    //   const mockCounters: ICounterCard[] = [
-    //     { id: '1', number: '01', status: 'serving', currentTicket: 'A-102' },
-    //     { id: '2', number: '02', status: 'serving', currentTicket: 'B-045' },
-    //     { id: '3', number: '03', status: 'serving', currentTicket: 'A-103' },
-    //     { id: '4', number: '04', status: 'calling', currentTicket: 'A-105' },
-    //     { id: '5', number: '05', status: 'serving', currentTicket: 'C-901' },
-    //     { id: '6', number: '06', status: 'offline', currentTicket: '' },
-    //   ];
-    //   setCounters(mockCounters);
+      return [];
     } finally {
       setLoading(false);
     }
   }, [branchId]);
 
-  // Update single counter status directly - returns true if found, false if not
-  const updateCounterStatus = (ticketNo: string, newTicketStatus: string): boolean => {
-    let found = false;
+  const playTicketCall = (ticketNo: string, counterCode: string) => {
+    if (!('speechSynthesis' in window)) return;
+    
+    const numberText = ticketNo.split('').join(' ');
+    const counterText = counterCode.replace(/^0+/, ''); 
+    
+    const text = `Xin mời khách hàng có số vé ${numberText}, đến quầy ${counterText}`;
+    console.log(`🔊 Speaking: ${text}`);
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'vi-VN';
+    utterance.rate = 0.9;
+    
+    const voices = window.speechSynthesis.getVoices();
+    const viVoice = voices.find(voice => voice.lang === 'vi-VN' || voice.lang === 'vi_VN' || voice.lang.toLowerCase().includes('vi'));
+    if (viVoice) {
+      utterance.voice = viVoice;
+    }
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Update single counter status directly
+  const handleTicketStatusChange = (ticketNo: string, newTicketStatus: string) => {
     setCounters((prevCounters) => {
-      return prevCounters.map((counter) => {
+      let found = false;
+      let counterToSpeak = '';
+      
+      const newCounters = prevCounters.map((counter) => {
         if (counter.currentTicket === ticketNo) {
           found = true;
-          let status: 'serving' | 'calling' | 'ready' | 'offline' | 'completed' | 'cancelled' = counter.status;
+          counterToSpeak = counter.number;
+          let status: 'serving' | 'calling' | 'ready' | 'offline' | 'completed' | 'cancelled' | 'skipped' = counter.status;
           
           if (newTicketStatus === 'CALLED') {
             status = 'calling';
@@ -89,17 +106,36 @@ export default function CounterGrid() {
             status = 'completed';
           } else if (newTicketStatus === 'CANCELLED') {
             status = 'cancelled';
+          } else if (newTicketStatus === 'SKIPPED_HOLD' || newTicketStatus === 'SKIPPED') {
+            status = 'skipped';
           } else if (newTicketStatus === 'SERVING') {
             status = 'serving';
           }
           
-          console.log(`📺 Update counter ${counter.number}: ${counter.currentTicket} → ${newTicketStatus} (${status})`);
           return { ...counter, status };
         }
         return counter;
       });
+
+      if (!found) {
+        // If not found in current state, we fetch counters
+        console.log(`📡 Ticket ${ticketNo} not found in current list, fetching all counters...`);
+        fetchCounters().then(fetchedCounters => {
+           if (newTicketStatus === 'CALLED') {
+              const c = fetchedCounters.find(item => item.currentTicket === ticketNo);
+              if (c) {
+                 playTicketCall(ticketNo, c.number);
+              }
+           }
+        });
+      } else {
+        if (newTicketStatus === 'CALLED' && counterToSpeak) {
+           playTicketCall(ticketNo, counterToSpeak);
+        }
+      }
+
+      return found ? newCounters : prevCounters;
     });
-    return found;
   };
 
   // Socket subscription
@@ -147,14 +183,7 @@ export default function CounterGrid() {
                 const { ticketNo, newStatus, oldStatus } = eventData;
                 console.log(`📡 Ticket status changed: ${ticketNo} ${oldStatus} → ${newStatus}`);
                 
-                // Try to update existing counter
-                const found = updateCounterStatus(ticketNo, newStatus);
-                
-                // If ticket not found, it's a new ticket → fetch all counters
-                if (!found) {
-                  console.log(`📡 Ticket ${ticketNo} not found in current list, fetching all counters...`);
-                  fetchCounters();
-                }
+                handleTicketStatusChange(ticketNo, newStatus);
               } 
               // For new tickets, fetch all counters to get complete data
               else if (eventData?.action === 'NEW_TICKET') {

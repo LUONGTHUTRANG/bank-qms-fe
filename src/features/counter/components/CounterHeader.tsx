@@ -43,11 +43,18 @@ export default function CounterHeader({ user, isSessionStarted }: { user?: UserI
   return (
     <header className="flex justify-between items-center w-full px-8 h-[72px] sticky top-0 z-30 bg-[#f9f9ff] shadow-[0_2px_20px_0_rgba(25,28,32,0.03)] border-b border-slate-200/50">
       <div className="flex items-center gap-4">
-        <span className="text-xl font-bold text-[#003063] tracking-tight">Architectural Banking</span>
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-primary text-3xl">
+            account_balance
+          </span>
+          <h1 className="text-xl font-black tracking-tighter text-[#003063] uppercase whitespace-nowrap">
+            Architectural Banking
+          </h1>
+        </div>
         <span className="h-5 w-px bg-slate-300 opacity-50"></span>
         <div className="flex items-center gap-2 px-3 py-1 bg-green-100 text-green-700 rounded-full text-[10px] font-bold uppercase tracking-widest">
           <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-          {t('counter.header.branch', 'Chi nhánh')}: {user ? `${t('counter.header.branchPrefix', 'Chi nhánh')} ${user.branchId}` : t('common.loading', 'Đang tải...')}
+          {user ? `${t('counter.header.branchPrefix', 'Chi nhánh')} ${user.branchId}` : t('common.loading', 'Đang tải...')}
         </div>
       </div>
       <div className="flex items-center gap-4">
@@ -95,7 +102,7 @@ export default function CounterHeader({ user, isSessionStarted }: { user?: UserI
             )}
           </AnimatePresence>
         </div>
-        <div className="flex items-center gap-1">
+        {/* <div className="flex items-center gap-1">
           <button className="cursor-pointer p-2 text-slate-500 hover:bg-slate-200/50 rounded-full transition-all duration-300 relative aspect-square flex items-center justify-center">
             <span className="material-symbols-outlined text-[20px]">notifications</span>
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-600 border border-[#f9f9ff] rounded-full"></span>
@@ -103,7 +110,7 @@ export default function CounterHeader({ user, isSessionStarted }: { user?: UserI
           <button className="cursor-pointer p-2 text-slate-500 hover:bg-slate-200/50 rounded-full transition-all duration-300 aspect-square flex items-center justify-center">
             <span className="material-symbols-outlined text-[20px]">settings</span>
           </button>
-        </div>
+        </div> */}
       </div>
     </header>
   );

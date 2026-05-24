@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 export interface ICounterCard {
   id: string;
   number: string;
-  status: 'serving' | 'calling' | 'ready' | 'offline' | 'completed' | 'cancelled';
+  status: 'serving' | 'calling' | 'ready' | 'offline' | 'completed' | 'cancelled' | 'skipped';
   currentTicket: string;
 }
 
@@ -37,18 +37,26 @@ export default function CounterCard({ id, number, status, currentTicket }: ICoun
       },
       completed: {
         badge: 'Đã hoàn thành',
-        bgColor: 'bg-blue-100',
-        textColor: 'text-blue-700',
-        borderColor: 'border-outline-variant border-opacity-15',
-        ticketBg: 'bg-surface-container-low',
+        bgColor: 'bg-blue-400',
+        textColor: 'text-blue-950',
+        borderColor: 'border-2 border-blue-400',
+        ticketBg: 'bg-blue-50',
         opacity: '',
       },
       cancelled: {
         badge: 'Đã hủy',
-        bgColor: 'bg-red-100',
-        textColor: 'text-red-700',
-        borderColor: 'border-outline-variant border-opacity-15',
-        ticketBg: 'bg-surface-container-low',
+        bgColor: 'bg-red-400',
+        textColor: 'text-red-950',
+        borderColor: 'border-2 border-red-400',
+        ticketBg: 'bg-red-50',
+        opacity: '',
+      },
+      skipped: {
+        badge: 'Lỡ lượt',
+        bgColor: 'bg-rose-400',
+        textColor: 'text-rose-950',
+        borderColor: 'border-2 border-rose-400',
+        ticketBg: 'bg-rose-50',
         opacity: '',
       },
       offline: {

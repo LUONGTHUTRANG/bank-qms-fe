@@ -28,9 +28,9 @@ const tabConfigs: Record<TicketTabType, TabConfig> = {
     timeIcon: 'avg_time',
     getTimeLabel: () => 'Vừa xong',
     buttons: [
-      { icon: 'campaign', title: 'Gọi số', color: 'text-[#003063]', bg: 'hover:bg-blue-50' },
+      // { icon: 'campaign', title: 'Gọi số', color: 'text-[#003063]', bg: 'hover:bg-blue-50' },
       { icon: 'more_time', title: 'Tạm hoãn', color: 'text-slate-500', bg: 'hover:bg-slate-100' },
-      { icon: 'close', title: 'Hủy bỏ', color: 'text-red-500', bg: 'hover:bg-red-50' }
+      { icon: 'cancel', title: 'Hủy bỏ', color: 'text-red-500', bg: 'hover:bg-red-50' }
     ]
   },
   postponed: {
@@ -203,11 +203,11 @@ export default function QueueListSection() {
             )}
           </button>
         </div>
-        <div className="flex gap-2 shrink-0">
+        {/* <div className="flex gap-2 shrink-0">
           <span className="px-3 py-1 bg-white rounded-full text-[11px] font-bold text-slate-500 border border-slate-200/60 shadow-sm whitespace-nowrap">
             Cập nhật: --:--:--
           </span>
-        </div>
+        </div> */}
       </div>
       
       <div className="bg-white rounded-xl shadow-sm border border-slate-200/60 overflow-hidden w-full">
@@ -216,7 +216,7 @@ export default function QueueListSection() {
             <div className="grid grid-cols-4 px-6 py-4 border-b border-slate-100 text-[10px] md:text-[11px] font-bold uppercase tracking-[0.15em] text-slate-400">
               <span>Số thứ tự</span>
               <span>Loại dịch vụ</span>
-              <span>Thời gian chờ</span>
+              <span>Thời điểm bắt đầu</span>
               <span className="text-right">Hành động</span>
             </div>
             

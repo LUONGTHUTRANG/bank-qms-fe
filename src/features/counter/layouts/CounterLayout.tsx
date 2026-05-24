@@ -4,6 +4,7 @@ import SessionStartScreen from '../components/SessionStartScreen';
 import { Outlet } from 'react-router';
 import { useState, useEffect } from 'react';
 import { authService } from '@/services/authService';
+import { toast } from '@/stores/useToastStore';
 
 export default function CounterLayout() {
   const [isSessionStarted, setIsSessionStarted] = useState(false);
@@ -68,7 +69,19 @@ export default function CounterLayout() {
               onStartSession={() => setIsSessionStarted(true)}
             />
           ) : (
-            <Outlet context={{ endSession: () => setIsSessionStarted(false), selectedCounter }} />
+            <Outlet context={{ 
+              endSession: async () => {
+                try {
+                  await authService.endCounterSession();
+                  toast.success('Phiên làm việc đã kết thúc thành công');
+                  setIsSessionStarted(false);
+                } catch (error) {
+                  console.error('Error ending session:', error);
+                  toast.error('Lỗi khi kết thúc phiên. Vui lòng thử lại.');
+                }
+              }, 
+              selectedCounter 
+            }} />
           )}
         </div>
       </main>

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { ticketService, type TicketDto } from '@/services/ticketService';
+import { socketService } from '@/services/socketService';
 
 interface ISkippedTicket {
   id: number;
@@ -68,9 +69,64 @@ export default function SkippedTicketList() {
 
   useEffect(() => {
     fetchSkippedTickets();
-    // Refresh every 30 seconds
+
+    let subscriptions: any[] = [];
+    let isMounted = true;
+
+    socketService.connect(async () => {
+      try {
+        const topicsRes = await ticketService.getTopics();
+        if (!isMounted) return;
+
+        const topics = Array.isArray(topicsRes) ? topicsRes : (topicsRes as any)?.data || [];
+
+        if (Array.isArray(topics) && topics.length > 0) {
+          topics.forEach((topic: string) => {
+            const sub = socketService.subscribe(topic, (rawEventData: any) => {
+              let eventData = rawEventData;
+              if (typeof rawEventData === 'string') {
+                try {
+                  eventData = JSON.parse(rawEventData);
+                } catch (e) {
+                  eventData = rawEventData;
+                }
+              }
+
+              if (eventData?.action === 'TICKET_STATUS_CHANGED') {
+                const { newStatus, oldStatus } = eventData;
+                // Nếu có ticket chuyển sang SKIPPED_HOLD hoặc mất trạng thái SKIPPED_HOLD thì lấy lại danh sách
+                if (newStatus === 'SKIPPED_HOLD' || oldStatus === 'SKIPPED_HOLD') {
+                  fetchSkippedTickets();
+                }
+              } else if (eventData?.action === 'NEW_TICKET') {
+                if (eventData.status === 'SKIPPED_HOLD') {
+                  fetchSkippedTickets();
+                }
+              }
+            });
+
+            if (sub) {
+              subscriptions.push(sub);
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error subscribing to display topics in NextQueueList:', error);
+      }
+    });
+
+    // Refresh every 30 minutes just to clean up expired tickets if they aren't pushed via socket
     const interval = setInterval(fetchSkippedTickets, 30000);
-    return () => clearInterval(interval);
+
+    return () => {
+        isMounted = false;
+        clearInterval(interval);
+        subscriptions.forEach((sub) => {
+          if (sub && typeof sub.unsubscribe === 'function') {
+            sub.unsubscribe();
+          }
+        });
+    };
   }, []);
 
   const getCustomerTypeConfig = (type: string) => {
@@ -106,7 +162,7 @@ export default function SkippedTicketList() {
         </div>
       </div>
 
-      <div className="flex flex-col gap-4 flex-1 overflow-y-auto pr-2 relative z-10">
+      <div className="flex flex-col gap-4 flex-1 overflow-hidden relative z-10">
         {/* Status/Error */}
         {loading && (
           <div className="px-2 mb-3 text-sm text-on-surface-variant">
@@ -130,38 +186,50 @@ export default function SkippedTicketList() {
 
         {/* Ticket List */}
         {skippedTickets.length > 0 ? (
-          <div className="space-y-3">
-            {skippedTickets.map((ticket, index) => {
-              const config = getCustomerTypeConfig(ticket.customerType);
-              const expireTime = formatTimeOnly(ticket.skipExpireAt);
-              return (
-                <motion.div
-                  key={ticket.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="bg-surface-container rounded-2xl p-4 flex items-center justify-between"
-                >
-                  <div className="flex flex-col">
-                    <div className="text-2xl font-bold text-primary">{ticket.ticketNo}</div>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-md font-bold uppercase text-outline">{config.label}</span>
-                      <span>-</span>
-                      {ticket.currentCounterCode && (
-                        <span className="text-md uppercase font-bold text-secondary">
-                          Quầy {ticket.currentCounterCode}
-                        </span>
-                      )}
+          <div className="flex-1 relative overflow-hidden">
+            <motion.div 
+              className="space-y-3 absolute top-0 left-0 right-0 w-full"
+              animate={skippedTickets.length > 4 ? {
+                y: [0, -((skippedTickets.length * 90) + (skippedTickets.length * 12))] // approximate height per item (90px) + gap (12px)
+              } : { y: 0 }}
+              transition={skippedTickets.length > 4 ? {
+                y: {
+                  repeat: Infinity,
+                  repeatType: "loop",
+                  duration: skippedTickets.length * 3, 
+                  ease: "linear",
+                }
+              } : { type: "tween", duration: 0.5 }}
+            >
+              {[...skippedTickets, ...(skippedTickets.length > 4 ? skippedTickets : [])].map((ticket, index) => {
+                const config = getCustomerTypeConfig(ticket.customerType);
+                const expireTime = formatTimeOnly(ticket.skipExpireAt);
+                return (
+                  <div
+                    key={`${ticket.id}-${index}`}
+                    className="bg-surface-container rounded-2xl p-4 flex items-center justify-between"
+                  >
+                    <div className="flex flex-col">
+                      <div className="text-2xl font-bold text-primary">{ticket.ticketNo}</div>
+                      <div className="flex items-center gap-3 mt-1">
+                        <span className="text-md font-bold uppercase text-outline">{config.label}</span>
+                        <span>-</span>
+                        {ticket.currentCounterCode && (
+                          <span className="text-md uppercase font-bold text-secondary">
+                            Quầy {ticket.currentCounterCode}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex flex-col items-end">
+                      <span className="text-md text-outline">Thời gian hết hạn</span>
+                      <span className="text-2xl font-bold text-error">{expireTime}</span>
                     </div>
                   </div>
-                  
-                  <div className="flex flex-col items-end">
-                    <span className="text-md text-outline">Thời gian hết hạn</span>
-                    <span className="text-2xl font-bold text-error">{expireTime}</span>
-                  </div>
-                </motion.div>
-              );
-            })}
+                );
+              })}
+            </motion.div>
           </div>
         ) : (
           !loading && (

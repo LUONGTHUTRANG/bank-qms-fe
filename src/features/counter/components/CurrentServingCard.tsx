@@ -1,22 +1,21 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import TransferCounterModal from './TransferCounterModal';
-import SkipReasonModal from './SkipReasonModal';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { useQueueStore } from '@/stores/useQueueStore';
-import type { TicketStatusUpdateRequest } from '@/services/ticketService';
 import { kioskService } from '@/services/kioskService';
 
 export default function CurrentServingCard() {
   const [servingState, setServingState] = useState<'idle' | 'calling' | 'serving' | 'completed'>('idle');
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [showSkipReasonModal, setShowSkipReasonModal] = useState(false);
   const [showCancelConfirmModal, setShowCancelConfirmModal] = useState(false);
+  const [showSkipConfirmModal, setShowSkipConfirmModal] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isCanceling, setIsCanceling] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
 
-  const { currentTicket, callNextTicket, isCalling, fetchCurrentTicket, updateCurrentTicketStatus, updateCurrentTicketStatusWithReason } = useQueueStore();
+  const { currentTicket, callNextTicket, isCalling, fetchCurrentTicket, updateCurrentTicketStatus } = useQueueStore();
 
   // Load current active ticket on mount
   useEffect(() => {
@@ -75,6 +74,14 @@ export default function CurrentServingCard() {
     }
   };
 
+  const handleCallAgain = async () => {
+    if (currentTicket) {
+      await updateCurrentTicketStatus('CALLED');
+      setElapsedTime(0);
+      setServingState('calling');
+    }
+  };
+
   const handleConfirmService = () => {
     setShowConfirmModal(true);
   };
@@ -106,31 +113,26 @@ export default function CurrentServingCard() {
     }
   };
 
-  const handleEndService = () => {
-    setShowSkipReasonModal(true);
+  const handleSkipTicket = () => {
+    setShowSkipConfirmModal(true);
   };
 
-  const handleSkipWithReason = async (reasonId: number, reasonName: string) => {
-    if (!currentTicket) {
-      console.error('No current ticket available');
-      return;
-    }
-
+  const handleConfirmSkip = async () => {
     try {
-      const request: TicketStatusUpdateRequest = {
-        status: 'SKIPPED_HOLD',
-        reasonId,
-        reason: reasonName
-      };
-
-      const updated = await updateCurrentTicketStatusWithReason(request);
-      if (updated) {
+      setIsSkipping(true);
+      if (currentTicket) {
+        const updated = await updateCurrentTicketStatus('SKIPPED_HOLD');
+        if (updated) {
+          setServingState('completed');
+        }
+      } else {
         setServingState('completed');
       }
+      setShowSkipConfirmModal(false);
     } catch (error) {
       console.error('Error skipping ticket:', error);
     } finally {
-      setShowSkipReasonModal(false);
+      setIsSkipping(false);
     }
   };
 
@@ -172,7 +174,7 @@ export default function CurrentServingCard() {
 
   return (
     <>
-      <section className="h-full bg-white p-7 rounded-xl shadow-sm border border-slate-200/60 flex flex-col justify-between relative overflow-hidden transition-all duration-300">
+      <section className="h-full bg-white p-7 rounded-3xl shadow-sm border border-slate-200/60 flex flex-col justify-between relative overflow-hidden transition-all duration-300">
 
         <div className="flex justify-between items-start mb-6 relative z-10">
           <div>
@@ -242,20 +244,23 @@ export default function CurrentServingCard() {
             <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid grid-cols-4 gap-4">
               <button 
                 onClick={handleConfirmService}
-                className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#10B981] text-white rounded-xl shadow-[0_4px_14px_rgba(16,185,129,0.3)] border border-[#059669] hover:bg-[#059669] hover:-translate-y-0.5 active:translate-y-0 transition-all group"
+                className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#10B981] text-white rounded-3xl shadow-[0_4px_14px_rgba(16,185,129,0.3)] border border-[#059669] hover:bg-[#059669] hover:-translate-y-0.5 active:translate-y-0 transition-all group"
               >
                 <span className="material-symbols-outlined text-[28px] group-hover:scale-110 transition-transform">how_to_reg</span>
                 <span className="text-[13px] font-extrabold uppercase tracking-tight">Xác nhận có mặt</span>
               </button>
               
-              <button className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#F0F5FF] text-[#1E40AF] rounded-xl border border-[#BFDBFE] hover:bg-[#E0E7FF] hover:border-[#93C5FD] transition-all group">
+              <button 
+                onClick={handleCallAgain}
+                className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#F0F5FF] text-[#1E40AF] rounded-3xl border border-[#BFDBFE] hover:bg-[#E0E7FF] hover:border-[#93C5FD] transition-all group"
+              >
                 <span className="material-symbols-outlined text-[28px] group-hover:-rotate-12 transition-transform">campaign</span>
                 <span className="text-[13px] font-extrabold uppercase tracking-tight">Gọi lại số</span>
               </button>
 
               <button 
-                onClick={handleEndService}
-                className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#FAFAFA] text-[#64748B] rounded-xl border border-[#E2E8F0] hover:bg-[#F1F5F9] hover:text-[#475569] hover:border-[#CBD5E1] transition-all group"
+                onClick={handleSkipTicket}
+                className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#FAFAFA] text-[#64748B] rounded-3xl border border-[#E2E8F0] hover:bg-[#F1F5F9] hover:text-[#475569] hover:border-[#CBD5E1] transition-all group"
               >
                 <span className="material-symbols-outlined text-[28px] group-hover:scale-95 transition-transform">person_off</span>
                 <span className="text-[13px] font-extrabold uppercase tracking-tight">Không đến (Bỏ qua)</span>
@@ -263,7 +268,7 @@ export default function CurrentServingCard() {
 
               <button 
                 onClick={handleCancelTransaction}
-                className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#FEE2E2] text-[#DC2626] rounded-xl border border-[#FCA5A5] hover:bg-[#FCA5A5] hover:border-[#F87171] transition-all group"
+                className="cursor-pointer flex flex-col items-center justify-center py-4 px-2 gap-2 bg-[#FEE2E2] text-[#DC2626] rounded-3xl border border-[#FCA5A5] hover:bg-[#FCA5A5] hover:border-[#F87171] transition-all group"
               >
                 <span className="material-symbols-outlined text-[20px]">cancel</span>
                 <span className="text-[13px] font-extrabold uppercase tracking-tight">Hủy giao dịch</span>
@@ -275,7 +280,7 @@ export default function CurrentServingCard() {
               <button 
                 onClick={servingState === 'serving' ? handleCompleteService : undefined} 
                 disabled={servingState === 'completed'}
-                className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-xl transition-all
+                className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-3xl transition-all
                   ${servingState === 'serving' 
                     ? 'cursor-pointer bg-green-50 text-green-700 border-green-200 hover:bg-green-100 shadow-sm' 
                     : 'cursor-not-allowed bg-slate-50 text-slate-400 border-slate-200 opacity-60 grayscale'}`}
@@ -286,7 +291,7 @@ export default function CurrentServingCard() {
               <button 
                 onClick={servingState === 'serving' ? () => setShowTransferModal(true) : undefined}
                 disabled={servingState === 'completed'}
-                className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-xl transition-all
+                className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-3xl transition-all
                   ${servingState === 'serving' 
                     ? 'cursor-pointer bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 shadow-sm' 
                     : 'cursor-not-allowed bg-slate-50 text-slate-400 border-slate-200 opacity-60 grayscale'}`}
@@ -296,7 +301,7 @@ export default function CurrentServingCard() {
               </button>
               {/* <button 
                 disabled={servingState === 'completed'}
-                className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-xl transition-all
+                className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-3xl transition-all
                   ${servingState === 'serving' 
                     ? 'cursor-pointer bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100 shadow-sm' 
                     : 'cursor-not-allowed bg-slate-50 text-slate-400 border-slate-200 opacity-60 grayscale'}`}
@@ -305,9 +310,9 @@ export default function CurrentServingCard() {
                 <span className="text-[11px] font-bold uppercase tracking-tight">Tạm dừng</span>
               </button> */}
               <button 
-                onClick={servingState === 'serving' ? handleEndService : undefined} 
+                onClick={servingState === 'serving' ? handleCancelTransaction : undefined} 
                 disabled={servingState === 'completed'}
-                className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-xl transition-all
+                className={`flex flex-col items-center justify-center gap-1 p-3 border rounded-3xl transition-all
                   ${servingState === 'serving' 
                     ? 'cursor-pointer bg-red-50 text-red-700 border-red-200 hover:bg-red-100 shadow-sm' 
                     : 'cursor-not-allowed bg-slate-50 text-slate-400 border-slate-200 opacity-60 grayscale'}`}
@@ -323,7 +328,7 @@ export default function CurrentServingCard() {
             <button 
               onClick={handleCallNext}
               disabled={servingState === 'serving' || isCalling}
-              className={`w-full h-12 rounded-xl flex items-center justify-center gap-2 transition-all duration-300
+              className={`w-full h-12 rounded-3xl flex items-center justify-center gap-2 transition-all duration-300
                 ${(servingState === 'idle' || servingState === 'completed') && !isCalling
                   ? 'cursor-pointer bg-[#003063] hover:bg-[#00468c] text-white shadow-md group hover:scale-[1.01] active:scale-[0.98]' 
                   : 'cursor-not-allowed bg-slate-100 text-slate-400 border border-slate-200 opacity-60'}`}
@@ -371,13 +376,13 @@ export default function CurrentServingCard() {
               <div className="grid grid-cols-2 gap-3">
                 <button 
                   onClick={() => setShowConfirmModal(false)}
-                  className="cursor-pointer py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-colors"
+                  className="cursor-pointer py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-3xl font-semibold transition-colors"
                 >
                   Hủy
                 </button>
                 <button 
                   onClick={confirmStartService}
-                  className="cursor-pointer py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20 rounded-xl font-semibold transition-colors"
+                  className="cursor-pointer py-2.5 px-4 bg-green-600 hover:bg-green-700 text-white shadow-md shadow-green-600/20 rounded-3xl font-semibold transition-colors"
                 >
                   Bắt đầu
                 </button>
@@ -394,13 +399,6 @@ export default function CurrentServingCard() {
         onConfirm={handleTransferServiceGroup}
       />
 
-      {/* Skip Reason Modal */}
-      <SkipReasonModal 
-        isOpen={showSkipReasonModal}
-        onClose={() => setShowSkipReasonModal(false)}
-        onConfirm={handleSkipWithReason}
-      />
-
       {/* Cancel Transaction Confirm Dialog */}
       <ConfirmDialog
         isOpen={showCancelConfirmModal}
@@ -412,6 +410,19 @@ export default function CurrentServingCard() {
         cancelText="Đóng"
         variant="danger"
         isLoading={isCanceling}
+      />
+
+      {/* Skip Ticket Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={showSkipConfirmModal}
+        onClose={() => setShowSkipConfirmModal(false)}
+        onConfirm={handleConfirmSkip}
+        title="Xác nhận bỏ qua"
+        message={`Bạn có chắc chắn muốn bỏ qua vé #${currentTicket?.ticketNo || '---'}? Khách hàng sẽ được chuyển vào danh sách lỡ lượt.`}
+        confirmText="Bỏ qua"
+        cancelText="Đóng"
+        variant="danger"
+        isLoading={isSkipping}
       />
     </>
   );

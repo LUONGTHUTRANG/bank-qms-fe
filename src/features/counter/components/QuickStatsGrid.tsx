@@ -1,5 +1,7 @@
 import { useOutletContext } from 'react-router';
+import { useState } from 'react';
 import type { SessionInfoDto } from '@/services/ticketService';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 interface QuickStatsGridProps {
   sessionInfo: SessionInfoDto | null;
@@ -14,6 +16,7 @@ const formatSeconds = (seconds: number): string => {
 
 export default function QuickStatsGrid({ sessionInfo }: QuickStatsGridProps) {
   const { endSession } = useOutletContext<{ endSession: () => void }>();
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   return (
     <section className="grid grid-cols-2 lg:grid-cols-6 gap-4 h-full">
@@ -47,7 +50,7 @@ export default function QuickStatsGrid({ sessionInfo }: QuickStatsGridProps) {
         </div>
       </div>
       <div 
-        onClick={endSession}
+        onClick={() => setIsConfirmOpen(true)}
         className="col-span-2 lg:col-span-2 bg-red-50 px-3 xl:px-4 py-4 rounded-xl flex flex-col justify-between shadow-sm border border-red-200 cursor-pointer hover:bg-red-100 hover:-translate-y-1 hover:shadow-md transition-all duration-300"
       >
         <span className="material-symbols-outlined text-red-600 mb-3 text-[20px] xl:text-[24px]">logout</span>
@@ -56,6 +59,17 @@ export default function QuickStatsGrid({ sessionInfo }: QuickStatsGridProps) {
           <p className="text-[15px] xl:text-[18px] font-bold text-red-600 leading-tight">Kết thúc<br className="hidden lg:block"/> phiên</p>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={endSession}
+        title="Kết thúc phiên làm việc"
+        message="Bạn có chắc chắn muốn kết thúc phiên làm việc? Hãy đảm bảo đã hoàn tất tất cả các giao dịch trước đó."
+        confirmText="Kết thúc phiên"
+        cancelText="Hủy"
+        variant="danger"
+      />
     </section>
   );
 }

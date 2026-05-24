@@ -5,7 +5,8 @@ export const API_ENDPOINTS = {
     PROFILE: '/v1/auth/me',
     COUNTER_SESSIONS: {
       START: '/v1/auth/counter-sessions/start',
-      ACTIVE: '/v1/auth/counter-sessions/active/me'
+      ACTIVE: '/v1/auth/counter-sessions/active/me',
+      END: '/v1/auth/counter-sessions/end'
     }
   },
   COUNTER: {
